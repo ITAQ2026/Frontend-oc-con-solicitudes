@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { UserPlus, Trash2, ShieldCheck } from 'lucide-react';
+import { UserPlus, Trash2 } from 'lucide-react';
 
 const GestionProveedores = () => {
   const [proveedores, setProveedores] = useState([]);
