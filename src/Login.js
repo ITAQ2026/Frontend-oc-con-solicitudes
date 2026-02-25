@@ -8,17 +8,18 @@ const Login = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Intenta buscar el usuario en la DB
-      const res = await api.get('/usuarios');
-      const user = res.data.find(u => u.email === email && u.password === password);
+      // Enviamos las credenciales al backend para que él las valide
+      const res = await api.post('/usuarios/login', { email, password });
       
-      if (user) {
-        onLogin(user);
-      } else {
-        alert("Credenciales incorrectas");
+      if (res.data) {
+        onLogin(res.data);
       }
     } catch (err) {
-      alert("Error al conectar con el servidor");
+      if (err.response && err.response.status === 401) {
+        alert("Email o contraseña incorrectos");
+      } else {
+        alert("Error de conexión con el servidor");
+      }
     }
   };
 
