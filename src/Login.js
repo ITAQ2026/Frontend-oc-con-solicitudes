@@ -7,6 +7,7 @@ const Login = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Enviando datos:", { email, password });
     try {
       // Enviamos las credenciales al backend para que él las valide
       const res = await api.post('/usuarios/login', { email, password });
