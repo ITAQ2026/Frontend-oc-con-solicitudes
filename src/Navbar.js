@@ -1,8 +1,19 @@
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { 
+  FileText, 
+  Truck, 
+  ShoppingCart, 
+  PlusCircle, 
+  CreditCard, 
+  Users, 
+  LogOut 
+} from 'lucide-react';
+
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // 1. Normalizamos el rol para evitar errores de mayúsculas/minúsculas
-  // 2. Verificamos tanto 'rol' como 'role' por si acaso cambió en el backend
+  // Normalizamos el rol para evitar errores de mayúsculas/minúsculas
   const userRole = (user?.rol || user?.role || '').toLowerCase();
   const isAdmin = userRole === 'admin';
 
@@ -17,12 +28,10 @@ const Navbar = ({ user, onLogout }) => {
         <Link to="/" style={styles.logo}>🛡️ Alpha Química</Link>
         
         <div style={styles.links}>
-          {/* Accesible para TODOS */}
           <Link to="/solicitudes" style={styles.link}>
             <FileText size={16} /> Solicitudes
           </Link>
 
-          {/* SOLO para Administradores */}
           {isAdmin && (
             <>
               <Link to="/proveedores" style={styles.link}>
@@ -58,6 +67,59 @@ const Navbar = ({ user, onLogout }) => {
       </div>
     </nav>
   );
+};
+
+const styles = {
+  nav: { 
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    padding: '0 30px', 
+    background: '#1e293b', 
+    alignItems: 'center',
+    height: '60px',
+    color: 'white',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1000
+  },
+  leftSection: { display: 'flex', alignItems: 'center', gap: '30px' },
+  logo: { color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '18px' },
+  links: { display: 'flex', alignItems: 'center', gap: '15px' },
+  link: { 
+    color: '#cbd5e1', 
+    textDecoration: 'none', 
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  userSection: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '20px',
+    borderLeft: '1px solid #334155',
+    paddingLeft: '20px'
+  },
+  userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
+  userName: { fontSize: '13px', fontWeight: '500' },
+  roleTag: { 
+    fontSize: '10px', 
+    color: 'white', 
+    padding: '1px 6px', 
+    borderRadius: '4px',
+    textTransform: 'uppercase'
+  },
+  logoutBtn: { 
+    background: '#ef4444', 
+    color: 'white', 
+    border: 'none', 
+    padding: '6px 12px', 
+    borderRadius: '6px', 
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  }
 };
 
 export default Navbar;
