@@ -30,7 +30,7 @@ const Dashboard = () => {
           <div style={styles.logoWrapper}>
             <img src={logoAlpha} alt="Alpha Química" style={styles.logoImg} />
           </div>
-          <h1 style={styles.mainTitle}>Alpha Química</h1>
+          <h1 style={styles.mainTitle}>Alpha Química SRL</h1>
           <p style={styles.subtitle}>Panel de Control Administrativo</p>
         </header>
         
