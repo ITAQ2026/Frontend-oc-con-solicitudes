@@ -59,3 +59,5 @@ const Navbar = ({ user, onLogout }) => {
     </nav>
   );
 };
+
+export default Navbar;
