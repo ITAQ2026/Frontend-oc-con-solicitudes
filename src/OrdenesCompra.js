@@ -19,6 +19,7 @@ const OrdenesCompra = () => {
     retira: '',
     solicitudId: '' 
   });
+ 
 
   useEffect(() => {
     cargarDatos();
@@ -31,10 +32,21 @@ const OrdenesCompra = () => {
         api.get('/ordenes-compra'),
         api.get('/solicitudes') 
       ]);
+      
+      console.log("Datos cargados de Solicitudes:", resSol.data); // DEBUG para ver qué llega de Render
+
       setProveedores(resProv.data);
       setHistorial(resOrd.data);
-      setSolicitudes(resSol.data.filter(s => s.estado === 'aprobada'));
-    } catch (err) { console.error("Error al cargar datos:", err); }
+      
+      // Filtro flexible (aprobada o APROBADA)
+      const aprobadas = resSol.data.filter(s => 
+        s.estado?.toLowerCase() === 'aprobada'
+      );
+      setSolicitudes(aprobadas);
+
+    } catch (err) { 
+      console.error("Error al cargar datos:", err); 
+    }
   };
 
   const manejarSeleccionSolicitud = (id) => {
@@ -44,7 +56,9 @@ const OrdenesCompra = () => {
       return;
     }
 
-    const solEncontrada = solicitudes.find(s => s.id === parseInt(id));
+    // Buscamos asegurando que ambos sean tratados como números o strings
+    const solEncontrada = solicitudes.find(s => String(s.id) === String(id));
+    
     if (solEncontrada) {
       setForm({
         ...form,
@@ -90,7 +104,7 @@ const OrdenesCompra = () => {
     doc.setFont("helvetica", "bold");
     doc.text("PROVEEDOR:", 14, 55);
     doc.setFont("helvetica", "normal");
-    doc.text(orden.proveedorNombre.toUpperCase(), 45, 55);
+    doc.text((orden.proveedorNombre || '').toUpperCase(), 45, 55);
 
     doc.setFont("helvetica", "bold");
     doc.text("N° ORDEN:", 140, 55);
@@ -106,7 +120,7 @@ const OrdenesCompra = () => {
     doc.text(fechaActual, 165, 62);
     doc.text("CONDICIÓN:", 14, 62);
     doc.setFont("helvetica", "normal");
-    doc.text(orden.condicionPago.toUpperCase(), 45, 62);
+    doc.text((orden.condicionPago || 'efectivo').toUpperCase(), 45, 62);
 
     autoTable(doc, {
       startY: 70,
@@ -195,7 +209,7 @@ const OrdenesCompra = () => {
               <option value="">-- Compra Directa (Sin Solicitud) --</option>
               {solicitudes.map(s => (
                 <option key={s.id} value={s.id}>
-                  Solicitud #{String(s.id).padStart(4, '0')} - {s.solicitante}
+                  Solicitud #{String(s.id).padStart(4, '0')} - {s.solicitante || 'Sin Solicitante'}
                 </option>
               ))}
             </select>
@@ -271,6 +285,7 @@ const OrdenesCompra = () => {
   );
 };
 
+// ... estilos sin cambios ...
 const styles = {
   container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'Arial' },
   card: { background: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', maxWidth: '900px', margin: '0 auto 20px' },
