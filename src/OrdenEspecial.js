@@ -31,12 +31,11 @@ const OrdenEspecial = () => {
     const cargar = async () => {
       try {
         // IMPORTANTE: Se agrega /api a todas las rutas
-        const [resP, resS, resH] = await Promise.all([
-          api.get('/api/proveedores'),
-          api.get('/api/solicitudes'),
-          api.get('/api/ordenes-especiales')
-        ]);
-
+       const [resP, resS, resH] = await Promise.all([
+          api.get('/proveedores'),
+          api.get('/solicitudes'),
+          api.get('/ordenes-especiales')
+        ])
         setProveedoresLista(resP.data);
         
         // Filtro flexible para capturar "Aceptada", "APROBADA", etc.

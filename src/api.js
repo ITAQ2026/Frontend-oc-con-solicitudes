@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const baseURL = (import.meta.env.VITE_API_URL || 'https://backend-oc-con-solicitudes.onrender.com') + '/api';
-
+const baseURL = import.meta.env.VITE_API_URL || 'https://backend-oc-con-solicitudes.onrender.com';
 console.log("DEBUG: API_URL detectada ->", baseURL);
 
 const api = axios.create({
