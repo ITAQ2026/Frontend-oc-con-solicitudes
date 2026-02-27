@@ -9,7 +9,7 @@ const OrdenEspecial = () => {
 
   const [proveedoresLista, setProveedoresLista] = useState([]);
   const [solicitudesAceptadas, setSolicitudesAceptadas] = useState([]);
-    const [historial, setHistorial] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const [campos, setCampos] = useState({
     id_orden: '0000',
     solicitud_id: '',
@@ -30,20 +30,35 @@ const OrdenEspecial = () => {
   useEffect(() => {
     const cargar = async () => {
       try {
+        // IMPORTANTE: Se agrega /api a todas las rutas
         const [resP, resS, resH] = await Promise.all([
-          api.get('/proveedores'),
-          api.get('/solicitudes'),
-          api.get('/ordenes-especiales')
+          api.get('/api/proveedores'),
+          api.get('/api/solicitudes'),
+          api.get('/api/ordenes-especiales')
         ]);
+
         setProveedoresLista(resP.data);
-        setSolicitudesAceptadas(resS.data.filter(s => s.estado?.toLowerCase() === 'aceptada' || s.estado?.toLowerCase() === 'aprobada'));
+        
+        // Filtro flexible para capturar "Aceptada", "APROBADA", etc.
+        const filtradas = resS.data.filter(s => {
+          const st = (s.estado || "").toString().trim().toLowerCase();
+          return st === 'aceptada' || st === 'aprobada';
+        });
+        
+        setSolicitudesAceptadas(filtradas);
         setHistorial(resH.data);
 
+        // Generador de correlativo de orden
         if (resH.data.length > 0) {
-          const maxId = Math.max(...resH.data.map(o => parseInt(o.id_orden) || 0));
-          setCampos(prev => ({ ...prev, id_orden: (maxId + 1).toString().padStart(4, '0') }));
+          const idsValidos = resH.data.map(o => parseInt(o.id_orden)).filter(n => !isNaN(n));
+          if (idsValidos.length > 0) {
+            const maxId = Math.max(...idsValidos);
+            setCampos(prev => ({ ...prev, id_orden: (maxId + 1).toString().padStart(4, '0') }));
+          }
         }
-      } catch (err) { console.error(err); }
+      } catch (err) { 
+        console.error("Error cargando datos:", err); 
+      }
     };
     cargar();
   }, []);
@@ -53,20 +68,35 @@ const OrdenEspecial = () => {
   };
 
   const manejarSeleccionSolicitud = (id) => {
+    if (!id) return;
     const sol = solicitudesAceptadas.find(s => String(s.id) === String(id));
     if (sol) {
-      const textoDetalles = sol.items ? sol.items.map(i => `${i.producto || i.descripcion} (Cant: ${i.cantidad})`).join('\n') : sol.descripcion;
-      setCampos({ ...campos, solicitud_id: id, referencia: `SC-${id}`, detalles_orden: textoDetalles });
+      // Intentamos obtener los items si existen, si no, usamos la descripción general
+      const textoDetalles = sol.items && Array.isArray(sol.items) 
+        ? sol.items.map(i => `${i.producto || i.descripcion} (Cant: ${i.cantidad})`).join('\n') 
+        : (sol.descripcion || sol.producto || "Sin descripción");
+
+      setCampos({ 
+        ...campos, 
+        solicitud_id: id, 
+        referencia: `SC-${id}`, 
+        detalles_orden: textoDetalles 
+      });
     }
   };
 
   const enviar = async (e) => {
     e.preventDefault();
+    if (!campos.proveedor) return alert("Por favor seleccione un proveedor");
+    
     try {
-      await api.post('/ordenes-especiales', campos);
+      await api.post('/api/ordenes-especiales', campos);
       alert("✅ Orden Especial guardada con éxito");
       window.location.reload();
-    } catch (err) { alert("Error al guardar"); }
+    } catch (err) { 
+      console.error(err);
+      alert("Error al guardar la orden"); 
+    }
   };
 
   return (
@@ -86,7 +116,7 @@ const OrdenEspecial = () => {
         >
           <option value="">-- Seleccionar una Solicitud Aprobada (Opcional) --</option>
           {solicitudesAceptadas.map(s => (
-            <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante}</option>
+            <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante} | {s.descripcion?.substring(0,30)}...</option>
           ))}
         </select>
 
@@ -130,7 +160,7 @@ const OrdenEspecial = () => {
         <textarea 
           style={{...styles.textarea, minHeight: '120px'}} 
           name="detalles_orden"
-          placeholder="Escriba aquí los detalles, productos o especificaciones de la orden..."
+          placeholder="Escriba aquí los detalles o productos..."
           value={campos.detalles_orden}
           onChange={manejarCambio}
         />
