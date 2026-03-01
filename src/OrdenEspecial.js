@@ -1,4 +1,4 @@
-  import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from './api'; 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -39,33 +39,59 @@ const OrdenEspecial = () => {
         api.get('/api/solicitudes'),
         api.get('/api/ordenes-especiales')
       ]);
+
       setProveedoresLista(resP.data);
+
+      // FILTRO: Aseguramos que lea 'estado' sin importar espacios o mayúsculas
       const filtradas = resS.data.filter(s => {
         const st = (s.estado || "").toString().trim().toLowerCase();
         return st === 'aceptada' || st === 'aprobada';
       });
+
       setSolicitudesAceptadas(filtradas);
       setHistorial(resH.data);
 
-      if (resH.data.length > 0) {
+      // Generar ID correlativo basado en el historial
+      if (resH.data && resH.data.length > 0) {
         const ids = resH.data.map(o => parseInt(o.id_orden)).filter(n => !isNaN(n));
         const maxId = ids.length > 0 ? Math.max(...ids) : 0;
         setCampos(prev => ({ ...prev, id_orden: (maxId + 1).toString().padStart(4, '0') }));
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error("Error cargando datos en Orden Especial:", err); 
+    }
+  };
+
+  const manejarSeleccionSolicitud = (id) => {
+    if (!id) return;
+    // Buscamos la solicitud (asegurando comparar strings)
+    const sol = solicitudesAceptadas.find(s => String(s.id) === String(id));
+    
+    if (sol) {
+      // Mapeo dinámico: Si existe 'items' (array) lo usamos, sino la 'descripcion'
+      const detalleTexto = sol.items && Array.isArray(sol.items)
+        ? sol.items.map(i => `- ${i.producto || i.descripcion} (Cant: ${i.cantidad})`).join('\n')
+        : (sol.descripcion || sol.producto || "Sin descripción detallada");
+
+      setCampos({ 
+        ...campos, 
+        solicitud_id: id, 
+        referencia: `SC-${id} / ${sol.area || ''}`, 
+        detalles_orden: `Solicitante: ${sol.solicitante}\nDetalle:\n${detalleTexto}` 
+      });
+    }
   };
 
   const generarPDFEspecial = () => {
     const doc = new jsPDF();
     
-    // Encabezado Pro
+    // Encabezado
     doc.setFillColor(30, 41, 59);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.text("ORDEN DE COMPRA ESPECIAL", 105, 25, { align: 'center' });
     
-    // Datos Alpha
     doc.setTextColor(40);
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
@@ -73,44 +99,28 @@ const OrdenEspecial = () => {
     doc.setFont(undefined, 'normal');
     doc.text(campos.datos_facturacion, 20, 55, { maxWidth: 170 });
 
-    // Bloque Info
     doc.line(20, 65, 190, 65);
     doc.text(`ORDEN N°: ${campos.id_orden}`, 20, 75);
     doc.text(`FECHA: ${new Date().toLocaleDateString()}`, 140, 75);
     doc.text(`PROVEEDOR: ${campos.proveedor}`, 20, 82);
     doc.text(`COTIZACIÓN: ${campos.cotizacion || 'N/A'}`, 140, 82);
-    doc.text(`CONTACTO: ${campos.contacto || 'N/A'}`, 20, 89);
-    doc.text(`REF: ${campos.referencia || 'N/A'}`, 140, 89);
 
-    // Detalles en Tabla
     autoTable(doc, {
       startY: 100,
-      head: [['DESCRIPCIÓN DETALLADA DE LA ORDEN']],
+      head: [['DESCRIPCIÓN DETALLADA']],
       body: [[campos.detalles_orden]],
       theme: 'grid',
-      headStyles: { fillColor: [71, 85, 105] },
-      styles: { fontSize: 10, cellPadding: 5 }
+      headStyles: { fillColor: [71, 85, 105] }
     });
 
     let finalY = doc.lastAutoTable.finalY + 15;
-
-    // Condiciones Pago y Entrega
     doc.setFont(undefined, 'bold');
     doc.text("CONDICIONES COMERCIALES", 20, finalY);
     doc.setFont(undefined, 'normal');
     doc.text(`Pago: ${campos.forma_pago} (${campos.metodos_pago})`, 20, finalY + 7);
-    doc.text(`Entrega: ${campos.lugar_entrega} | Plazo: ${campos.plazo_entrega}`, 20, finalY + 14);
+    doc.text(`Entrega: ${campos.lugar_entrega}`, 20, finalY + 14);
 
-    // Firmas
-    doc.line(30, finalY + 50, 85, finalY + 50);
-    doc.text("SOLICITÓ", 57, finalY + 55, { align: 'center' });
-    doc.text(campos.solicito, 57, finalY + 60, { align: 'center' });
-
-    doc.line(125, finalY + 50, 180, finalY + 50);
-    doc.text("AUTORIZÓ", 152, finalY + 55, { align: 'center' });
-    doc.text(campos.autorizo, 152, finalY + 60, { align: 'center' });
-
-    doc.save(`Orden_Especial_${campos.id_orden}_${campos.proveedor}.pdf`);
+    doc.save(`Orden_Especial_${campos.id_orden}.pdf`);
   };
 
   const enviar = async (e) => {
@@ -121,14 +131,9 @@ const OrdenEspecial = () => {
       generarPDFEspecial();
       alert("✅ Orden Especial guardada y PDF generado");
       window.location.reload();
-    } catch (err) { alert("Error al guardar"); }
-  };
-
-  const manejarSeleccionSolicitud = (id) => {
-    const sol = solicitudesAceptadas.find(s => String(s.id) === String(id));
-    if (sol) {
-      const texto = sol.items ? sol.items.map(i => `- ${i.producto} (Cant: ${i.cantidad})`).join('\n') : sol.descripcion;
-      setCampos({ ...campos, solicitud_id: id, referencia: `SC-${id}`, detalles_orden: texto });
+    } catch (err) { 
+      console.error(err);
+      alert("Error al guardar la orden"); 
     }
   };
 
@@ -144,14 +149,18 @@ const OrdenEspecial = () => {
 
         <label style={styles.sectionTitle}><LinkIcon size={14}/> Vincular Solicitud</label>
         <select style={styles.inputVinculo} value={campos.solicitud_id} onChange={(e) => manejarSeleccionSolicitud(e.target.value)}>
-          <option value="">-- Selección Opcional --</option>
-          {solicitudesAceptadas.map(s => <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante}</option>)}
+          <option value="">-- Seleccionar Solicitud Aceptada --</option>
+          {solicitudesAceptadas.map(s => (
+            <option key={s.id} value={s.id}>
+              SC-{s.id} | {s.solicitante} | {s.area}
+            </option>
+          ))}
         </select>
 
         <label style={styles.sectionTitle}><Info size={14}/> Información Principal</label>
         <div style={styles.gridForm}>
           <select style={styles.input} name="proveedor" value={campos.proveedor} onChange={manejarCambio}>
-            <option value="">Proveedor...</option>
+            <option value="">Seleccionar Proveedor...</option>
             {proveedoresLista.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
           </select>
           <input style={styles.input} name="referencia" placeholder="Referencia" value={campos.referencia} onChange={manejarCambio} />
@@ -161,19 +170,19 @@ const OrdenEspecial = () => {
 
         <div style={styles.grid2Col}>
           <div>
-            <label style={styles.sectionTitle}><CreditCard size={14}/> Pago</label>
-            <input style={styles.input} name="forma_pago" placeholder="Forma de pago" value={campos.forma_pago} onChange={manejarCambio} />
-            <input style={{...styles.input, marginTop:'10px'}} name="metodos_pago" placeholder="Método" value={campos.metodos_pago} onChange={manejarCambio} />
+            <label style={styles.sectionTitle}><CreditCard size={14}/> Condiciones de Pago</label>
+            <input style={styles.input} name="forma_pago" placeholder="Ej: 30 días" value={campos.forma_pago} onChange={manejarCambio} />
+            <input style={{...styles.input, marginTop:'10px'}} name="metodos_pago" placeholder="Ej: Echeq / Transferencia" value={campos.metodos_pago} onChange={manejarCambio} />
           </div>
           <div>
             <label style={styles.sectionTitle}><Truck size={14}/> Logística</label>
             <input style={styles.input} name="lugar_entrega" placeholder="Lugar de entrega" value={campos.lugar_entrega} onChange={manejarCambio} />
-            <input style={{...styles.input, marginTop:'10px'}} name="plazo_entrega" placeholder="Plazo" value={campos.plazo_entrega} onChange={manejarCambio} />
+            <input style={{...styles.input, marginTop:'10px'}} name="plazo_entrega" placeholder="Plazo de entrega" value={campos.plazo_entrega} onChange={manejarCambio} />
           </div>
         </div>
 
-        <label style={styles.sectionTitle}><FileText size={14}/> Detalles</label>
-        <textarea style={styles.textarea} name="detalles_orden" value={campos.detalles_orden} onChange={manejarCambio} placeholder="Describa productos y cantidades..." />
+        <label style={styles.sectionTitle}><FileText size={14}/> Detalles de la Orden</label>
+        <textarea style={styles.textarea} name="detalles_orden" value={campos.detalles_orden} onChange={manejarCambio} placeholder="Describa productos, cantidades y especificaciones..." />
 
         <div style={{textAlign: 'right', marginTop: '30px'}}>
           <button onClick={enviar} style={styles.btnSubmit}><Save size={18}/> GUARDAR Y DESCARGAR PDF</button>
@@ -187,12 +196,12 @@ const styles = {
   card: { background: 'white', padding: '40px', borderRadius: '15px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', maxWidth: '950px', margin: '0 auto' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '2px solid #334155', paddingBottom: '15px' },
   logo: { fontWeight: 'bold', color: '#0f172a', fontSize: '20px', letterSpacing: '1px' },
-  sectionTitle: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', margin: '20px 0 10px 0', textTransform: 'uppercase' },
+  sectionTitle: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', color: '#64748b', margin: '20px 0 10px 0', textTransform: 'uppercase' },
   gridForm: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' },
   grid2Col: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' },
-  input: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' },
-  inputVinculo: { width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid #94a3b8', background: '#f8fafc' },
-  textarea: { width: '100%', minHeight: '150px', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit' },
+  input: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '14px' },
+  inputVinculo: { width: '100%', padding: '12px', borderRadius: '8px', border: '2px solid #3182ce', background: '#f0f9ff', fontWeight: 'bold' },
+  textarea: { width: '100%', minHeight: '150px', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', fontFamily: 'inherit', fontSize: '14px' },
   btnSubmit: { display: 'flex', alignItems: 'center', gap: '10px', padding: '15px 30px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginLeft: 'auto' }
 };
 
