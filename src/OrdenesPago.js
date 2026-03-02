@@ -8,7 +8,7 @@ const OrdenesPago = () => {
   const [historial, setHistorial] = useState([]);
   const [pago, setPago] = useState({
     proveedorNombre: '',
-    productoServicio: '', // Nuevo campo
+    productoServicio: '', 
     cantidad: 1,
     precioUnitario: '',
     caja: '',
@@ -22,19 +22,23 @@ const OrdenesPago = () => {
 
   const cargarDatos = async () => {
     try {
+      // ✅ Rutas corregidas con el prefijo /api/
       const [resProv, resPagos] = await Promise.all([
-        api.get('/proveedores'),
-        api.get('/ordenes-pago')
+        api.get('/api/proveedores'),
+        api.get('/api/ordenes-pago')
       ]);
-      setProveedores(resProv.data);
-      setHistorial(resPagos.data);
-    } catch (err) { console.error(err); }
+      setProveedores(resProv.data || []);
+      setHistorial(resPagos.data || []);
+    } catch (err) { 
+      console.error("Error cargando datos de pagos:", err); 
+    }
   };
 
   const generarPDF = (p) => {
     const doc = new jsPDF();
     const idFormateado = String(p.id).padStart(4, '0');
-    const totalCalculado = p.cantidad * p.precioUnitario;
+    // Usamos el monto guardado en BD o calculamos en el momento
+    const totalCalculado = p.monto || (p.cantidad * p.precioUnitario);
     
     // --- ENCABEZADO AZUL ---
     doc.setFillColor(41, 128, 185); 
@@ -49,7 +53,7 @@ const OrdenesPago = () => {
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
     doc.text(`Comprobante Nro: ${idFormateado}`, 14, 50);
-    doc.text(`Fecha: ${new Date(p.fecha).toLocaleDateString()}`, 14, 56);
+    doc.text(`Fecha: ${new Date(p.fecha || p.fecha_creacion).toLocaleDateString()}`, 14, 56);
     doc.text(`Caja: ${p.caja || "General"}`, 14, 62);
     
     // --- TABLA DETALLADA ---
@@ -61,7 +65,7 @@ const OrdenesPago = () => {
           p.productoServicio || "S/D",
           p.proveedorNombre, 
           p.cantidad, 
-          `$${Number(p.precioUnitario).toLocaleString()}`, 
+          `$${Number(p.precioUnitario || 0).toLocaleString()}`, 
           `$${Number(totalCalculado).toLocaleString()}`
         ]
       ],
@@ -79,11 +83,11 @@ const OrdenesPago = () => {
       theme: 'striped'
     });
 
-    // --- SECCIÓN DE FIRMA Y DATOS AL PIE ---
+    // --- SECCIÓN DE FIRMA ---
     const finalY = doc.lastAutoTable.finalY + 45;
-    doc.line(14, finalY, 80, finalY); // Línea
+    doc.line(14, finalY, 80, finalY); 
     doc.setFontSize(10);
-    doc.text("FIRMA", 14, finalY + 5);
+    doc.text("FIRMA AUTORIZADA", 14, finalY + 5);
     doc.text("ACLARACIÓN:", 14, finalY + 13);
     doc.text("DNI:", 14, finalY + 21);
 
@@ -92,17 +96,23 @@ const OrdenesPago = () => {
 
   const enviar = async (e) => {
     e.preventDefault();
+    if (!pago.proveedorNombre) return alert("Seleccione un proveedor");
+
     try {
       const montoTotal = Number(pago.cantidad) * Number(pago.precioUnitario);
-      await api.post('/ordenes-pago', { ...pago, monto: montoTotal });
+      // ✅ Ruta corregida con /api/
+      await api.post('/api/ordenes-pago', { ...pago, monto: montoTotal });
       
-      alert("✅ Orden de Pago registrada");
+      alert("✅ Orden de Pago registrada con éxito");
       setPago({ 
         proveedorNombre: '', productoServicio: '', cantidad: 1, 
         precioUnitario: '', caja: '', metodoPago: 'Transferencia', referencia: '' 
       });
       cargarDatos();
-    } catch (err) { alert("Error al registrar"); }
+    } catch (err) { 
+      console.error(err);
+      alert("Error al registrar el pago en el servidor"); 
+    }
   };
 
   return (
@@ -133,19 +143,19 @@ const OrdenesPago = () => {
               </select>
             </div>
             <div>
-              <label style={styles.label}>Caja</label>
-              <input style={styles.input} placeholder="Caja de origen" value={pago.caja} onChange={e => setPago({...pago, caja: e.target.value})} />
+              <label style={styles.label}>Caja / Origen Fondos</label>
+              <input style={styles.input} placeholder="Ej: Caja Chica / Banco" value={pago.caja} onChange={e => setPago({...pago, caja: e.target.value})} />
             </div>
           </div>
 
           <div style={styles.gridRow}>
             <div>
               <label style={styles.label}>Cantidad</label>
-              <input style={styles.input} type="number" value={pago.cantidad} onChange={e => setPago({...pago, cantidad: e.target.value})} />
+              <input style={styles.input} type="number" min="1" value={pago.cantidad} onChange={e => setPago({...pago, cantidad: e.target.value})} />
             </div>
             <div>
               <label style={styles.label}>Precio Unitario</label>
-              <input style={styles.input} type="number" placeholder="$ 0.00" value={pago.precioUnitario} onChange={e => setPago({...pago, precioUnitario: e.target.value})} required />
+              <input style={styles.input} type="number" step="0.01" placeholder="$ 0.00" value={pago.precioUnitario} onChange={e => setPago({...pago, precioUnitario: e.target.value})} required />
             </div>
           </div>
 
@@ -156,66 +166,74 @@ const OrdenesPago = () => {
                 <option value="Transferencia">Transferencia</option>
                 <option value="Efectivo">Efectivo</option>
                 <option value="Cheque">Cheque</option>
+                <option value="Echeq">Echeq</option>
                 <option value="Cuenta Corriente">Cuenta Corriente</option>
               </select>
             </div>
             <div>
-              <label style={styles.label}>Referencia</label>
-              <input style={styles.input} placeholder="Nro de comprobante" value={pago.referencia} onChange={e => setPago({...pago, referencia: e.target.value})} />
+              <label style={styles.label}>Referencia de Pago</label>
+              <input style={styles.input} placeholder="Nro de comprobante o banco" value={pago.referencia} onChange={e => setPago({...pago, referencia: e.target.value})} />
             </div>
           </div>
 
           <div style={styles.totalBox}>
-            Total a Liquidar: <strong>${(pago.cantidad * (pago.precioUnitario || 0)).toLocaleString()}</strong>
+            Total a Liquidar: <strong>${(Number(pago.cantidad) * (Number(pago.precioUnitario) || 0)).toLocaleString()}</strong>
           </div>
           
           <button type="submit" style={styles.btnSubmit}>REGISTRAR Y GENERAR COMPROBANTE</button>
         </form>
       </div>
 
-      {/* Tabla de Historial con IDs 0000 */}
       <div style={styles.card}>
-        <h3 style={styles.header}>📋 Últimos Pagos</h3>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Nro</th>
-              <th style={styles.th}>Producto/Servicio</th>
-              <th style={styles.th}>Monto</th>
-              <th style={styles.th}>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {historial.map(p => (
-              <tr key={p.id}>
-                <td style={styles.td}>#{String(p.id).padStart(4, '0')}</td>
-                <td style={styles.td}>{p.productoServicio}</td>
-                <td style={styles.td}>${Number(p.monto).toLocaleString()}</td>
-                <td style={styles.td}>
-                  <button onClick={() => generarPDF(p)} style={styles.btnPdf}>PDF</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <h3 style={styles.header}>📋 Historial de Pagos</h3>
+        <div style={{overflowX: 'auto'}}>
+            <table style={styles.table}>
+            <thead>
+                <tr>
+                <th style={styles.th}>Nro</th>
+                <th style={styles.th}>Producto/Servicio</th>
+                <th style={styles.th}>Proveedor</th>
+                <th style={styles.th}>Monto</th>
+                <th style={styles.th}>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {historial.length === 0 ? (
+                    <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>No hay registros de pagos</td></tr>
+                ) : (
+                    historial.map(p => (
+                    <tr key={p.id}>
+                        <td style={styles.td}>#{String(p.id).padStart(4, '0')}</td>
+                        <td style={styles.td}>{p.productoServicio}</td>
+                        <td style={styles.td}>{p.proveedorNombre}</td>
+                        <td style={styles.td}>${Number(p.monto).toLocaleString()}</td>
+                        <td style={styles.td}>
+                        <button onClick={() => generarPDF(p)} style={styles.btnPdf}>Ver PDF</button>
+                        </td>
+                    </tr>
+                    ))
+                )}
+            </tbody>
+            </table>
+        </div>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'Arial' },
+  container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' },
   card: { background: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', maxWidth: '850px', margin: '0 auto 20px' },
-  header: { borderBottom: '2px solid #edf2f7', paddingBottom: '10px', color: '#2c3e50', marginBottom: '20px' },
+  header: { borderBottom: '2px solid #edf2f7', paddingBottom: '10px', color: '#2c3e50', marginBottom: '20px', fontWeight: 'bold' },
   gridRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' },
   label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#7f8c8d', marginBottom: '5px', textTransform: 'uppercase' },
-  input: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', boxSizing: 'border-box' },
+  input: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', boxSizing: 'border-box', outline: 'none' },
   totalBox: { background: '#f0fff4', padding: '15px', borderRadius: '10px', textAlign: 'right', fontSize: '18px', color: '#2f855a', marginBottom: '15px', border: '1px solid #c6f6d5' },
-  btnSubmit: { width: '100%', padding: '14px', background: '#2980b9', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' },
-  btnPdf: { background: '#edf2f7', color: '#2980b9', border: '1px solid #2980b9', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer' },
+  btnSubmit: { width: '100%', padding: '14px', background: '#2980b9', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' },
+  btnPdf: { background: '#edf2f7', color: '#2980b9', border: '1px solid #2980b9', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #edf2f7', color: '#7f8c8d', fontSize: '12px' },
-  td: { padding: '12px', borderBottom: '1px solid #edf2f7', fontSize: '14px' }
+  th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #edf2f7', color: '#7f8c8d', fontSize: '12px', textTransform: 'uppercase' },
+  td: { padding: '12px', borderBottom: '1px solid #edf2f7', fontSize: '14px', color: '#334155' }
 };
 
 export default OrdenesPago;
