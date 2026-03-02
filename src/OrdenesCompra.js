@@ -25,25 +25,24 @@ const OrdenesCompra = () => {
     cargarDatos();
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      const [resProv, resSol] = await Promise.all([
-        api.get('/api/proveedores'),
-        api.get('/api/solicitudes')
-      ]);
-      
-      setProveedores(resProv.data || []);
-      
-      // ✅ Fuerza a que se muestren todas sin importar el estado
-      const todasLasSolicitudes = resSol.data || [];
-      console.log("ESTO ES LO QUE LLEGA:", todasLasSolicitudes);
-      
-      setSolicitudes(todasLasSolicitudes); // Seteamos todo el array directamente
-      
-    } catch (err) {
-      console.error("Error al cargar datos:", err);
-    }
-  };;
+  // En el frontend: OrdenesCompra.js o OrdenesEspeciales.js
+const cargarDatos = async () => {
+  try {
+    const [resProv, resSol] = await Promise.all([
+      api.get('/api/proveedores'),
+      // ✅ IMPORTANTE: Agregamos ?rol=admin para saltar el filtro de usuario_id
+      api.get('/api/solicitudes?rol=admin') 
+    ]);
+    
+    setProveedores(resProv.data || []);
+    // Seteamos todo el array que ahora sí debería venir con datos
+    setSolicitudes(resSol.data || []); 
+    
+    console.log("¡Solicitudes cargadas para el Admin!", resSol.data);
+  } catch (err) {
+    console.error("Error cargando datos:", err);
+  }
+};
 
   const manejarSeleccionSolicitud = (id) => {
     if (!id) {
