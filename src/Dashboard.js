@@ -1,27 +1,32 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, ShoppingCart, CreditCard, FileSpreadsheet, ClipboardList } from 'lucide-react';
-// IMPORTANTE: Si la imagen está en src/assets/ usa esta ruta. 
-// Si está en src/ usa: import logoAlpha from './image_f87ff8.png';
 import logoAlpha from './assets/image_f87ff8.png'; 
 
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  // Forzar scroll al inicio al cargar
+  // 1. Obtenemos el usuario y su rol
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : { rol: 'user' };
+
   useEffect(() => {
     window.scrollTo(0, 0);
     document.body.style.backgroundColor = '#f1f5f9';
     return () => { document.body.style.backgroundColor = ''; };
   }, []);
 
-  const modules = [
-    { title: 'Solicitudes', icon: <ClipboardList size={40} />, path: '/solicitudes', color: '#ef4444', desc: 'Gestionar nuevas solicitudes de insumos' },
-    { title: 'Proveedores', icon: <Users size={40} />, path: '/proveedores', color: '#3b82f6', desc: 'Gestionar base de datos de proveedores' },
-    { title: 'Órdenes de Compra', icon: <ShoppingCart size={40} />, path: '/compras', color: '#10b981', desc: 'Generar pedidos y PDFs de compra' },
-    { title: 'Órdenes de Pago', icon: <CreditCard size={40} />, path: '/pagos', color: '#f59e0b', desc: 'Registrar salidas de dinero y recibos' },
-    { title: 'O. Especial', icon: <FileSpreadsheet size={40} />, path: '/orden-especial', color: '#059669', desc: 'Formato para grandes proveedores' }
+  // 2. Definimos todos los módulos
+  const allModules = [
+    { title: 'Solicitudes', icon: <ClipboardList size={40} />, path: '/solicitudes', color: '#ef4444', desc: 'Gestionar nuevas solicitudes de insumos', adminOnly: false },
+    { title: 'Proveedores', icon: <Users size={40} />, path: '/proveedores', color: '#3b82f6', desc: 'Gestionar base de datos de proveedores', adminOnly: true },
+    { title: 'Órdenes de Compra', icon: <ShoppingCart size={40} />, path: '/compras', color: '#10b981', desc: 'Generar pedidos y PDFs de compra', adminOnly: true },
+    { title: 'Órdenes de Pago', icon: <CreditCard size={40} />, path: '/pagos', color: '#f59e0b', desc: 'Registrar salidas de dinero y recibos', adminOnly: true },
+    { title: 'O. Especial', icon: <FileSpreadsheet size={40} />, path: '/orden-especial', color: '#059669', desc: 'Formato para grandes proveedores', adminOnly: true }
   ];
+
+  // 3. Filtramos: Si es admin ve todo, si no, solo lo que no es adminOnly
+  const modules = allModules.filter(m => user.rol === 'admin' || !m.adminOnly);
 
   return (
     <div style={styles.pageBackground} key="dashboard-v2">
@@ -31,7 +36,9 @@ const Dashboard = () => {
             <img src={logoAlpha} alt="Alpha Química" style={styles.logoImg} />
           </div>
           <h1 style={styles.mainTitle}>Alpha Química SRL</h1>
-          <p style={styles.subtitle}>Panel de Control Administrativo</p>
+          <p style={styles.subtitle}>
+            {user.rol === 'admin' ? 'Panel de Control Administrativo' : 'Panel de Solicitudes de Usuario'}
+          </p>
         </header>
         
         <div style={styles.grid}>
@@ -51,6 +58,7 @@ const Dashboard = () => {
   );
 };
 
+// ... (Mantenemos los mismos estilos que ya tenías)
 const styles = {
   pageBackground: { backgroundColor: '#f1f5f9', minHeight: '100vh', padding: '40px 0' },
   container: { maxWidth: '1200px', margin: '0 auto', padding: '0 20px' },
