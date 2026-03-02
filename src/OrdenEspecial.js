@@ -80,10 +80,16 @@ const OrdenEspecial = () => {
     const doc = new jsPDF();
     const c = datosExtra || campos;
 
-    // CABECERA OSCURA
+    // --- CABECERA OSCURA ---
     doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 45, 'F');
-    try { doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 70, 38); } catch (e) {}
+    doc.rect(0, 0, 210, 50, 'F'); // Aumenté un poco el alto del rectángulo a 50
+    
+    // Logo más grande (Dimensiones: 85x45)
+    try { 
+      doc.addImage(LOGO_ALPHA, 'PNG', 15, 3, 85, 45); 
+    } catch (e) {
+      console.error("Error al cargar logo:", e);
+    }
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20); doc.setFont("helvetica", "bold");
@@ -91,24 +97,35 @@ const OrdenEspecial = () => {
     doc.setFontSize(10); doc.setFont("helvetica", "normal");
     doc.text("ALPHA QUÍMICA S.R.L. | CUIT: 30-60968636-3", 200, 35, { align: 'right' });
 
-    // CUADRO DE DATOS
+    // --- CUADRO DE DATOS ---
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(15, 50, 180, 35, 3, 3, 'F');
+    doc.roundedRect(15, 55, 180, 35, 3, 3, 'F'); // Bajé un poco el cuadro para no pisar la cabecera
     
-    doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text(`ORDEN N°: ${c.id_orden}`, 20, 60);
-    doc.text(`FECHA: ${new Date().toLocaleDateString()}`, 140, 60);
+    doc.setFontSize(10); 
     
-    doc.text("PROVEEDOR:", 20, 68);
-    doc.setFont("helvetica", "normal");
-    doc.text(c.proveedor.toUpperCase(), 50, 68);
-    
+    // N° de Orden y Fecha en Negrita
     doc.setFont("helvetica", "bold");
-    doc.text("REFERENCIA:", 20, 76);
+    doc.text("ORDEN N°:", 20, 65);
+    doc.text("FECHA:", 140, 65);
+    
     doc.setFont("helvetica", "normal");
-    doc.text(c.referencia || 'N/C', 50, 76);
+    doc.text(`${c.id_orden}`, 45, 65);
+    doc.text(`${new Date().toLocaleDateString()}`, 158, 65);
+    
+    // Proveedor
+    doc.setFont("helvetica", "bold");
+    doc.text("PROVEEDOR:", 20, 73);
+    doc.setFont("helvetica", "normal");
+    doc.text(c.proveedor.toUpperCase(), 50, 73);
+    
+    // Referencia
+    doc.setFont("helvetica", "bold");
+    doc.text("REFERENCIA:", 20, 81);
+    doc.setFont("helvetica", "normal");
+    doc.text(c.referencia || 'N/C', 50, 81);
 
+    // --- TABLA DE CONTENIDO ---
     autoTable(doc, {
       startY: 95,
       head: [['DESCRIPCIÓN Y ESPECIFICACIONES TÉCNICAS']],
@@ -120,6 +137,7 @@ const OrdenEspecial = () => {
 
     let currentY = doc.lastAutoTable.finalY + 15;
 
+    // --- CONDICIONES ---
     doc.setFont("helvetica", "bold");
     doc.text("CONDICIONES COMERCIALES Y LOGÍSTICA", 20, currentY);
     doc.setFont("helvetica", "normal");
@@ -127,14 +145,17 @@ const OrdenEspecial = () => {
     doc.text(`• Entrega: ${c.lugar_entrega}`, 25, currentY + 16);
     doc.text(`• Plazo: ${c.plazo_entrega}`, 25, currentY + 24);
 
-    // FIRMAS
+    // --- FIRMAS ---
     const footerY = 260;
     doc.setDrawColor(200);
     doc.line(30, footerY, 85, footerY);
     doc.line(125, footerY, 180, footerY);
+    doc.setFontSize(9); doc.setFont("helvetica", "bold");
     doc.text("SOLICITÓ", 57, footerY + 5, { align: 'center' });
-    doc.text(c.solicito, 57, footerY + 10, { align: 'center' });
     doc.text("AUTORIZÓ", 152, footerY + 5, { align: 'center' });
+    
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    doc.text(c.solicito, 57, footerY + 10, { align: 'center' });
     doc.text(c.autorizo, 152, footerY + 10, { align: 'center' });
 
     doc.save(`Orden_Especial_${c.id_orden}.pdf`);
