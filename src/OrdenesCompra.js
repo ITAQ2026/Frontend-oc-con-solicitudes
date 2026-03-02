@@ -62,15 +62,23 @@ const OrdenesCompra = () => {
     }
   };
 
-  const exportarPDF = (itemsFinales, datosOrden = null) => {
+const exportarPDF = (itemsFinales, datosOrden = null) => {
     const doc = new jsPDF();
     const info = datosOrden || form;
-    const idOrden = datosOrden?.id ? `OC-${String(datosOrden.id).padStart(4, '0')}` : (form.solicitudId ? `SC-${form.solicitudId}` : 'NUEVA');
+    const idOrden = datosOrden?.id 
+      ? `OC-${String(datosOrden.id).padStart(4, '0')}` 
+      : (form.solicitudId ? `SC-${form.solicitudId}` : 'NUEVA');
 
-    // CABECERA OSCURA
+    // --- CABECERA OSCURA ---
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 45, 'F');
-    try { doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 55, 30); } catch (e) {}
+    
+    // Logo más grande (Dimensiones: 70x40 en lugar de 55x30)
+    try { 
+      doc.addImage(LOGO_ALPHA, 'PNG', 15, 5, 70, 38); 
+    } catch (e) {
+      console.error("Error al cargar logo:", e);
+    }
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22); doc.setFont("helvetica", "bold");
@@ -78,22 +86,40 @@ const OrdenesCompra = () => {
     doc.setFontSize(10); doc.setFont("helvetica", "normal");
     doc.text("ALPHA QUÍMICA S.R.L. | CUIT: 30-60968636-3", 200, 35, { align: 'right' });
 
-    // CUADRO DE DATOS
+    // --- CUADRO DE DATOS ---
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(15, 50, 180, 25, 3, 3, 'F');
+    doc.roundedRect(15, 50, 180, 30, 3, 3, 'F'); // Un poco más alto para que entre la condición
+    
+    // Proveedor
     doc.setFont("helvetica", "bold");
     doc.text("PROVEEDOR:", 20, 60);
     doc.setFont("helvetica", "normal");
     doc.text(`${(info.proveedor || info.proveedorNombre || '').toUpperCase()}`, 50, 60);
-    doc.text(`FECHA: ${new Date(info.fecha || new Date()).toLocaleDateString()}`, 140, 60);
-    doc.text(`REF: ${idOrden}`, 140, 68);
+    
+    // Condición de Pago (NUEVO)
+    doc.setFont("helvetica", "bold");
+    doc.text("CONDICIÓN:", 20, 70);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${(info.condicionPago || 'Efectivo').toUpperCase()}`, 50, 70);
 
+    // Fecha y Ref en Negrita
+    doc.setFont("helvetica", "bold");
+    doc.text(`FECHA:`, 140, 60);
+    doc.text(`REF:`, 140, 68);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`${new Date(info.fecha || new Date()).toLocaleDateString()}`, 158, 60);
+    doc.text(`${idOrden}`, 158, 68);
+
+    // --- TABLA ---
     autoTable(doc, {
       startY: 85,
       head: [['Descripción', 'Cant.', 'P. Unit.', 'Subtotal']],
       body: itemsFinales.map(i => [
-        i.producto, i.cantidad, `$ ${Number(i.precio || 0).toLocaleString()}`, 
+        i.producto, 
+        i.cantidad, 
+        `$ ${Number(i.precio || 0).toLocaleString()}`, 
         `$ ${(i.cantidad * (i.precio || 0)).toLocaleString()}`
       ]),
       theme: 'grid',
@@ -101,7 +127,7 @@ const OrdenesCompra = () => {
       styles: { fontSize: 9 }
     });
 
-    // FIRMAS
+    // --- FIRMAS ---
     const firmaY = 250;
     doc.setDrawColor(200);
     doc.line(30, firmaY, 85, firmaY); 
