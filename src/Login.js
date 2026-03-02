@@ -10,7 +10,7 @@ const Login = ({ onLogin }) => {
     console.log("Enviando datos:", { email, password });
     try {
       // Enviamos las credenciales al backend para que él las valide
-      const res = await api.post('/usuarios/login', { email, password });
+      const res = await api.post('/api/usuarios/login', { email, password });
       
       if (res.data) {
         onLogin(res.data);
