@@ -1,8 +1,8 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Package, Plus, Save, Trash2, FileText } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Package, Trash2, Plus, Save, FileText } from 'lucide-react';
 
 const OrdenesCompra = () => {
   // Pegar aquí el código Base64 de la imagen image_ca0300.png
@@ -25,24 +25,19 @@ const OrdenesCompra = () => {
     cargarDatos();
   }, []);
 
-  // En el frontend: OrdenesCompra.js o OrdenesEspeciales.js
-const cargarDatos = async () => {
-  try {
-    const [resProv, resSol] = await Promise.all([
-      api.get('/api/proveedores'),
-      // ✅ IMPORTANTE: Agregamos ?rol=admin para saltar el filtro de usuario_id
-      api.get('/api/solicitudes?rol=admin') 
-    ]);
-    
-    setProveedores(resProv.data || []);
-    // Seteamos todo el array que ahora sí debería venir con datos
-    setSolicitudes(resSol.data || []); 
-    
-    console.log("¡Solicitudes cargadas para el Admin!", resSol.data);
-  } catch (err) {
-    console.error("Error cargando datos:", err);
-  }
-};
+  const cargarDatos = async () => {
+    try {
+      const [resProv, resSol] = await Promise.all([
+        api.get('/api/proveedores'),
+        api.get('/api/solicitudes?rol=admin') 
+      ]);
+      
+      setProveedores(resProv.data || []);
+      setSolicitudes(resSol.data || []); 
+    } catch (err) {
+      console.error("Error cargando datos:", err);
+    }
+  };
 
   const manejarSeleccionSolicitud = (id) => {
     if (!id) {
@@ -59,7 +54,6 @@ const cargarDatos = async () => {
         observaciones: `Ref: SC-${id}. Area: ${sol.area || sol.sector}. ` + (sol.observaciones || sol.descripcion || '')
       });
       
-      // ✅ Lógica de parseo de items (soporta String JSON o Array directo)
       let itemsSol = [];
       try {
         itemsSol = typeof sol.items === 'string' ? JSON.parse(sol.items) : sol.items;
@@ -80,9 +74,8 @@ const cargarDatos = async () => {
   const exportarPDF = (itemsFinales) => {
     const doc = new jsPDF();
     
-    // Configuración estética del PDF para Alpha Química
     doc.setFontSize(22);
-    doc.setTextColor(30, 41, 59); // Slate 800
+    doc.setTextColor(30, 41, 59);
     doc.text("ORDEN DE COMPRA", 105, 20, { align: 'center' });
     
     doc.setFontSize(12);
@@ -126,7 +119,6 @@ const cargarDatos = async () => {
     const splitObs = doc.splitTextToSize(form.observaciones || 'Sin observaciones adicionales', 170);
     doc.text(splitObs, 20, finalY + 5);
     
-    // Bloque de Firmas
     const firmaY = finalY + 40;
     doc.setDrawColor(200);
     doc.line(30, firmaY, 80, firmaY);
@@ -153,7 +145,7 @@ const cargarDatos = async () => {
       window.location.reload();
     } catch (err) {
       console.error("Error al guardar OC:", err);
-      alert("Error al guardar en la base de datos. Verifique la conexión.");
+      alert("Error al guardar en la base de datos.");
     }
   };
 
@@ -164,7 +156,7 @@ const cargarDatos = async () => {
         
         <form onSubmit={enviar}>
           <div style={styles.sectionVinculo}>
-            <label style={styles.labelVinculo}>Vincular Solicitud de Compra (Solo Aprobadas)</label>
+            <label style={styles.labelVinculo}>Vincular Solicitud de Compra</label>
             <select 
               style={styles.inputVinculo} 
               value={form.solicitudId} 
@@ -232,10 +224,10 @@ const cargarDatos = async () => {
                     const newItems = [...items]; newItems[index].cantidad = e.target.value; setItems(newItems);
                   }} 
                 />
-                <div style={{flex: 1.5, position: 'relative'}}>
+                <div style={styles.priceContainer}>
                     <span style={styles.currencyPrefix}>$</span>
                     <input 
-                        style={{ ...styles.input, paddingLeft: '25px' }} 
+                        style={styles.inputPrice} 
                         type="number" 
                         step="0.01" 
                         placeholder="Precio Unit." 
@@ -264,16 +256,6 @@ const cargarDatos = async () => {
             </div>
           </div>
 
-          <div style={{marginBottom: '20px'}}>
-            <label style={styles.label}>Observaciones de la OC</label>
-            <textarea 
-               style={{...styles.input, minHeight: '80px', fontFamily: 'inherit', resize: 'vertical'}} 
-               value={form.observaciones} 
-               onChange={e => setForm({...form, observaciones: e.target.value})}
-               placeholder="Aclaraciones importantes para el proveedor o administración..."
-            />
-          </div>
-
           <button type="submit" style={styles.btnSubmit}>
             <Save size={20}/> GUARDAR Y DESCARGAR ORDEN (PDF)
           </button>
@@ -294,9 +276,14 @@ const styles = {
   input: { padding: '12px 15px', borderRadius: '10px', border: '1px solid #cbd5e1', width: '100%', fontSize: '14px', outline: 'none', transition: 'border 0.2s' },
   sectionItems: { background: '#ffffff', padding: '25px', borderRadius: '15px', marginBottom: '25px', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' },
   itemRow: { display: 'flex', gap: '12px', marginBottom: '15px', alignItems: 'center' },
-  currencyPrefix: { position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '14px', fontWeight: 'bold' },
+  
+  // Estilos mejorados para el Precio Unitario
+  priceContainer: { flex: 1.5, position: 'relative', display: 'flex', alignItems: 'center' },
+  currencyPrefix: { position: 'absolute', left: '12px', color: '#64748b', fontSize: '14px', fontWeight: 'bold', zIndex: 1 },
+  inputPrice: { padding: '12px 15px 12px 30px', borderRadius: '10px', border: '1px solid #cbd5e1', width: '100%', fontSize: '14px', outline: 'none' },
+  
   btnAdd: { display: 'flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', border: '1px dashed #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: '#475569' },
-  btnSubmit: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%', padding: '18px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', transition: 'transform 0.1s' },
+  btnSubmit: { marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%', padding: '18px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', transition: 'transform 0.1s' },
   btnDeleteRow: { background: '#fee2e2', border: 'none', color: '#ef4444', padding: '10px', borderRadius: '8px', cursor: 'pointer' },
   label: { fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '8px', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }
 };
