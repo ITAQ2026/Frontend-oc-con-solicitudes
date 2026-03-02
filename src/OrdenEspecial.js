@@ -83,7 +83,7 @@ const OrdenEspecial = () => {
     // CABECERA OSCURA
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 45, 'F');
-    try { doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 55, 30); } catch (e) {}
+    try { doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 70, 38); } catch (e) {}
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20); doc.setFont("helvetica", "bold");
