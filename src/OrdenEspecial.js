@@ -86,7 +86,7 @@ const OrdenEspecial = () => {
     
     // Logo más grande (Dimensiones: 85x45)
     try { 
-      doc.addImage(LOGO_ALPHA, 'PNG', 15, 2, 70, 38); 
+      doc.addImage(LOGO_ALPHA, 'PNG', 15, 2, 85, 45); 
     } catch (e) {
       console.error("Error al cargar logo:", e);
     }
