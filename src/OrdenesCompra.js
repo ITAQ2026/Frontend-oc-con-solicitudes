@@ -27,7 +27,6 @@ const OrdenesCompra = () => {
 
   const cargarDatos = async () => {
     try {
-      // ✅ Llamada en paralelo a Proveedores y Solicitudes
       const [resProv, resSol] = await Promise.all([
         api.get('/api/proveedores'),
         api.get('/api/solicitudes')
@@ -35,18 +34,16 @@ const OrdenesCompra = () => {
       
       setProveedores(resProv.data || []);
       
-      // ✅ Filtrado mejorado para capturar solicitudes listas
-      const aceptadas = (resSol.data || []).filter(s => {
-        const estado = (s.estado || "").toString().trim().toLowerCase();
-        return estado === 'aceptada' || estado === 'aprobada' || estado === 'finalizada';
-      });
-      setSolicitudes(aceptadas);
+      // ✅ Fuerza a que se muestren todas sin importar el estado
+      const todasLasSolicitudes = resSol.data || [];
+      console.log("ESTO ES LO QUE LLEGA:", todasLasSolicitudes);
       
-      console.log("Solicitudes vinculables cargadas:", aceptadas.length);
+      setSolicitudes(todasLasSolicitudes); // Seteamos todo el array directamente
+      
     } catch (err) {
-      console.error("Error al cargar datos en OC:", err);
+      console.error("Error al cargar datos:", err);
     }
-  };
+  };;
 
   const manejarSeleccionSolicitud = (id) => {
     if (!id) {
