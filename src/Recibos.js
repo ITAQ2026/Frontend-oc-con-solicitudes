@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// IMPORTANTE: Ruta relativa corregida para el build de Vercel
 import api from './api'; 
-import { Receipt, Plus, Download, Trash2 } from 'lucide-react';
+import { Receipt, Plus, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const Recibos = () => {
   const [recibos, setRecibos] = useState([]);
@@ -26,12 +27,57 @@ const Recibos = () => {
     }
   };
 
+  // Función para generar el PDF del historial
+  const descargarPDF = (r) => {
+    const doc = jsPDF();
+    
+    // Encabezado con estética de la empresa
+    doc.setFillColor(30, 41, 59); // Color #1e293b
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text("COMPROBANTE DE RECIBO DE CAJA", 105, 30, { align: 'center' });
+
+    // Datos del recibo
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(14);
+    doc.text(`Recibo N°: #A-${String(r.id).padStart(4, '0')}`, 20, 55);
+    doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString()}`, 150, 55);
+
+    doc.setLineWidth(0.5);
+    doc.line(20, 60, 190, 60);
+
+    doc.setFontSize(12);
+    doc.text(`He recibido de: ${r.emisor}`, 20, 75);
+    doc.text(`La suma de: $${Number(r.monto).toLocaleString()}`, 20, 85);
+    doc.text(`En concepto de:`, 20, 95);
+    
+    doc.setFont("helvetica", "italic");
+    doc.text(`${r.concepto}`, 30, 105, { maxWidth: 150 });
+
+    // Cuadro de firma
+    doc.setFont("helvetica", "normal");
+    doc.line(120, 150, 180, 150);
+    doc.text("Firma y Sello Responsable", 125, 155);
+
+    // Footer
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Documento generado por Sistema de Gestión Alpha Química", 105, 280, { align: 'center' });
+
+    doc.save(`Recibo_Alpha_A${r.id}.pdf`);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/recibos', form);
+      const res = await api.post('/api/recibos', form);
       alert("✅ Recibo generado exitosamente");
-      // Limpiamos el formulario después de guardar
+      // Opcional: Descargar automáticamente al crear
+      // descargarPDF(res.data);
       setForm({ emisor: 'Alpha Química', receptor: '', concepto: '', monto: '', condicion_pago: 'Efectivo' });
       fetchRecibos();
     } catch (err) {
@@ -95,7 +141,12 @@ const Recibos = () => {
                     ${Number(r.monto).toLocaleString()}
                   </td>
                   <td style={{ ...styles.td, textAlign: 'center' }}>
-                    <Download size={18} style={{ cursor: 'pointer', color: '#64748b' }} title="Descargar PDF" />
+                    <Download 
+                      size={20} 
+                      style={{ cursor: 'pointer', color: '#0ea5e9' }} 
+                      title="Descargar PDF" 
+                      onClick={() => descargarPDF(r)}
+                    />
                   </td>
                 </tr>
               ))}

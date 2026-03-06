@@ -14,12 +14,12 @@ import {
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // Normalizamos el rol y el email para las validaciones
-  const userRole = (user?.rol || user?.role || '').toLowerCase();
-  const userEmail = user?.email || '';
+  // Normalizamos el rol y el email para evitar errores de mayúsculas
+  const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
+  const userEmail = (user?.email || '').toLowerCase().trim();
   
   const isAdmin = userRole === 'admin';
-  // Moreno o Admin tienen acceso a Logística
+  // IMPORTANTE: Validación exacta para Moreno o cualquier Admin
   const isLogistics = userEmail === 'm.moreno@alphaquimica.com.ar' || isAdmin;
 
   const handleLogoutClick = () => {
@@ -38,7 +38,7 @@ const Navbar = ({ user, onLogout }) => {
             <FileText size={16} /> Solicitudes
           </Link>
 
-          {/* SECCIÓN LOGÍSTICA: Moreno o Admin */}
+          {/* SECCIÓN LOGÍSTICA: Visible para Moreno y Admin */}
           {isLogistics && (
             <>
               <div style={styles.divider} />
@@ -111,46 +111,15 @@ const styles = {
     textDecoration: 'none', 
     fontSize: '13px',
     display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '5px 8px',
-    borderRadius: '4px'
+    alignItems: 'center', gap: '6px',
+    padding: '5px 8px', borderRadius: '4px'
   },
-  divider: {
-    width: '1px',
-    height: '24px',
-    background: '#334155',
-    margin: '0 5px'
-  },
-  userSection: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: '20px',
-    borderLeft: '1px solid #334155',
-    paddingLeft: '20px'
-  },
+  divider: { width: '1px', height: '24px', background: '#334155', margin: '0 5px' },
+  userSection: { display: 'flex', alignItems: 'center', gap: '20px', borderLeft: '1px solid #334155', paddingLeft: '20px' },
   userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
   userName: { fontSize: '13px', fontWeight: '500' },
-  roleTag: { 
-    fontSize: '9px', 
-    color: 'white', 
-    padding: '1px 6px', 
-    borderRadius: '4px',
-    textTransform: 'uppercase',
-    marginTop: '2px'
-  },
-  logoutBtn: { 
-    background: '#ef4444', 
-    color: 'white', 
-    border: 'none', 
-    padding: '6px 12px', 
-    borderRadius: '6px', 
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '13px'
-  }
+  roleTag: { fontSize: '9px', color: 'white', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', marginTop: '2px' },
+  logoutBtn: { background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }
 };
 
 export default Navbar;
