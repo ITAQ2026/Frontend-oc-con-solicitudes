@@ -20,19 +20,18 @@ const Recibos = () => {
 
   const fetchRecibos = async () => {
     try {
-      const res = await api.get('/api/recibos');
+      // CORRECCIÓN: Se quita /api/
+      const res = await api.get('/recibos');
       setRecibos(res.data);
     } catch (err) {
       console.error("Error al cargar recibos", err);
     }
   };
 
-  // Función para generar el PDF del historial
   const descargarPDF = (r) => {
     const doc = jsPDF();
     
-    // Encabezado con estética de la empresa
-    doc.setFillColor(30, 41, 59); // Color #1e293b
+    doc.setFillColor(30, 41, 59); 
     doc.rect(0, 0, 210, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
@@ -41,7 +40,6 @@ const Recibos = () => {
     doc.setFontSize(12);
     doc.text("COMPROBANTE DE RECIBO DE CAJA", 105, 30, { align: 'center' });
 
-    // Datos del recibo
     doc.setTextColor(40, 40, 40);
     doc.setFontSize(14);
     doc.text(`Recibo N°: #A-${String(r.id).padStart(4, '0')}`, 20, 55);
@@ -51,19 +49,17 @@ const Recibos = () => {
     doc.line(20, 60, 190, 60);
 
     doc.setFontSize(12);
-    doc.text(`He recibido de: ${r.emisor}`, 20, 75);
+    doc.text(`He recibido de: ${r.emisor || 'Alpha Química'}`, 20, 75);
     doc.text(`La suma de: $${Number(r.monto).toLocaleString()}`, 20, 85);
     doc.text(`En concepto de:`, 20, 95);
     
     doc.setFont("helvetica", "italic");
     doc.text(`${r.concepto}`, 30, 105, { maxWidth: 150 });
 
-    // Cuadro de firma
     doc.setFont("helvetica", "normal");
     doc.line(120, 150, 180, 150);
     doc.text("Firma y Sello Responsable", 125, 155);
 
-    // Footer
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
     doc.text("Documento generado por Sistema de Gestión Alpha Química", 105, 280, { align: 'center' });
@@ -74,10 +70,9 @@ const Recibos = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/api/recibos', form);
+      // CORRECCIÓN: Se quita /api/
+      await api.post('/recibos', form);
       alert("✅ Recibo generado exitosamente");
-      // Opcional: Descargar automáticamente al crear
-      // descargarPDF(res.data);
       setForm({ emisor: 'Alpha Química', receptor: '', concepto: '', monto: '', condicion_pago: 'Efectivo' });
       fetchRecibos();
     } catch (err) {

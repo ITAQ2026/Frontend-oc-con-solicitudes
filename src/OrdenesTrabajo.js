@@ -6,7 +6,7 @@ import 'jspdf-autotable';
 
 const OrdenesTrabajo = () => {
   const [vehiculos, setVehiculos] = useState([]);
-  const [historial, setHistorial] = useState([]); // Nuevo estado para el historial
+  const [historial, setHistorial] = useState([]); 
   const [repuestos, setRepuestos] = useState([{ descripcion: '', cantidad: 1 }]);
   const [form, setForm] = useState({ 
     vehiculoId: '', 
@@ -22,25 +22,25 @@ const OrdenesTrabajo = () => {
   }, []);
 
   const fetchVehiculos = () => {
-    api.get('/api/vehiculos')
+    // CORRECCIÓN: Se quita /api/ para usar la ruta directa del backend
+    api.get('/vehiculos')
       .then(res => setVehiculos(res.data))
       .catch(err => console.error("Error al cargar vehículos", err));
   };
 
   const fetchHistorial = () => {
-    api.get('/api/ordenes-trabajo')
+    // CORRECCIÓN: Se quita /api/
+    api.get('/ordenes-trabajo')
       .then(res => setHistorial(res.data))
       .catch(err => console.error("Error al cargar historial", err));
   };
 
   const agregarRepuesto = () => setRepuestos([...repuestos, { descripcion: '', cantidad: 1 }]);
 
-  // Función para generar el PDF de la OT
   const descargarOT = (ot) => {
     const doc = jsPDF();
     
-    // Header Estilizado
-    doc.setFillColor(15, 23, 42); // #0f172a
+    doc.setFillColor(15, 23, 42); 
     doc.rect(0, 0, 210, 35, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
@@ -48,7 +48,6 @@ const OrdenesTrabajo = () => {
     doc.setFontSize(12);
     doc.text(`NRO ORDEN: #${String(ot.id).padStart(5, '0')}`, 105, 28, { align: 'center' });
 
-    // Datos del Vehículo
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -61,13 +60,11 @@ const OrdenesTrabajo = () => {
 
     doc.line(20, 70, 190, 70);
 
-    // Falla y Diagnóstico
     doc.setFont("helvetica", "bold");
     doc.text("FALLA REPORTADA / TRABAJOS:", 20, 80);
     doc.setFont("helvetica", "normal");
     doc.text(ot.falla || "Sin descripción", 20, 88, { maxWidth: 170 });
 
-    // Tabla de Repuestos
     doc.autoTable({
       startY: 110,
       head: [['Descripción del Repuesto / Insumo', 'Cantidad']],
@@ -76,7 +73,6 @@ const OrdenesTrabajo = () => {
       headStyles: { fillColor: [15, 23, 42] }
     });
 
-    // Pie de página
     const finalY = doc.lastAutoTable.finalY + 30;
     doc.line(130, finalY, 180, finalY);
     doc.text("Firma Responsable Taller", 130, finalY + 5);
@@ -88,11 +84,12 @@ const OrdenesTrabajo = () => {
     e.preventDefault();
     const data = { ...form, repuestos };
     try {
-      await api.post('/api/ordenes-trabajo', data);
+      // CORRECCIÓN: Se quita /api/
+      await api.post('/ordenes-trabajo', data);
       alert("✅ Orden de Trabajo registrada con éxito");
       setForm({ vehiculoId: '', falla: '', tareas: '', kilometraje: '', responsable: '' });
       setRepuestos([{ descripcion: '', cantidad: 1 }]);
-      fetchHistorial(); // Actualiza la lista sin recargar toda la web
+      fetchHistorial(); 
     } catch (err) { 
       alert("❌ Error al guardar la orden."); 
     }
@@ -100,7 +97,6 @@ const OrdenesTrabajo = () => {
 
   return (
     <div style={styles.container}>
-      {/* FORMULARIO DE NUEVA OT */}
       <div style={styles.card}>
         <h2 style={styles.header}><Wrench size={24} /> Nueva Orden de Trabajo</h2>
         <form onSubmit={guardarOT}>
@@ -173,7 +169,6 @@ const OrdenesTrabajo = () => {
         </form>
       </div>
 
-      {/* TABLA DE HISTORIAL */}
       <div style={{...styles.card, marginTop: '30px'}}>
         <h3 style={styles.header}>Historial de Mantenimiento</h3>
         <table style={styles.table}>

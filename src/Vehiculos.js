@@ -12,17 +12,19 @@ const Vehiculos = () => {
 
   const fetchVehiculos = async () => {
     try {
-      const res = await api.get('/api/vehiculos');
+      // CORRECCIÓN: Se quita /api/
+      const res = await api.get('/vehiculos');
       setVehiculos(res.data);
     } catch (err) { 
-      console.error("Error al cargar flota"); 
+      console.error("Error al cargar flota", err); 
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/vehiculos', form);
+      // CORRECCIÓN: Se quita /api/
+      await api.post('/vehiculos', form);
       alert("✅ Vehículo guardado con éxito");
       setForm({ patente: '', modelo: '', anio: '', vencimiento_vtv: '' });
       fetchVehiculos();
@@ -109,7 +111,8 @@ const Vehiculos = () => {
                       onClick={async () => { 
                         if(window.confirm(`¿Eliminar vehículo ${v.patente}?`)) { 
                           try {
-                            await api.delete(`/api/vehiculos/${v.id}`); 
+                            // CORRECCIÓN: Se quita /api/
+                            await api.delete(`/vehiculos/${v.id}`); 
                             fetchVehiculos(); 
                           } catch(e) { alert("Error al eliminar"); }
                         } 
