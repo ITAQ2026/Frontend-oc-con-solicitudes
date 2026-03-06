@@ -1,74 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api';
-import { Receipt, Plus, DollarSign, FileDown } from 'lucide-react';
+import api from './api';
+import { Receipt, Plus, Download, Trash2 } from 'lucide-react';
 
 const Recibos = () => {
   const [recibos, setRecibos] = useState([]);
-  const [form, setForm] = useState({ emisor: 'Alpha Química S.A.', receptor: '', concepto: '', monto: '', metodo_pago: 'Efectivo' });
+  const [form, setForm] = useState({ emisor: 'Alpha Química', receptor: '', concepto: '', monto: '', condicion_pago: 'Efectivo' });
 
-  useEffect(() => {
-    api.get('/api/recibos').then(res => setRecibos(res.data));
-  }, []);
+  useEffect(() => { fetchRecibos(); }, []);
 
-  const handleSubmit = async (e) => {
+  const fetchRecibos = async () => {
+    const res = await api.get('/api/recibos');
+    setRecibos(res.data);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    try {
-      await api.post('/api/recibos', form);
-      alert("✅ Recibo emitido correctamente");
-      window.location.reload();
-    } catch (err) { alert("❌ Error al emitir"); }
+    await api.post('/api/recibos', form);
+    alert("Recibo generado");
+    fetchRecibos();
   };
 
   return (
-    <div style={{ padding: '30px', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      <div style={{ background: 'white', padding: '25px', borderRadius: '12px', maxWidth: '900px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
-          <Receipt size={28} /> Emisión de Recibos
-        </h2>
-        <hr style={{ margin: '20px 0', opacity: 0.1 }} />
-
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <input style={inputStyle} placeholder="Emisor" value={form.emisor} onChange={e => setForm({...form, emisor: e.target.value})} required />
-          <input style={inputStyle} placeholder="Receptor" value={form.receptor} onChange={e => setForm({...form, receptor: e.target.value})} required />
-          <input style={inputStyle} type="number" placeholder="Monto $" value={form.monto} onChange={e => setForm({...form, monto: e.target.value})} required />
-          <select style={inputStyle} value={form.metodo_pago} onChange={e => setForm({...form, metodo_pago: e.target.value})}>
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-            <option value="Cheque">Cheque</option>
-          </select>
-          <textarea style={{ ...inputStyle, gridColumn: 'span 2', height: '80px' }} placeholder="Concepto del pago..." onChange={e => setForm({...form, concepto: e.target.value})} required />
-          <button type="submit" style={btnStyle}><Plus size={18} /> GENERAR RECIBO</button>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h2 style={styles.header}><Receipt /> Administración: Recibos</h2>
+        <form onSubmit={handleSave} style={styles.form}>
+          <input placeholder="Receptor" style={styles.input} onChange={e => setForm({...form, receptor: e.target.value})} />
+          <input placeholder="Monto" type="number" style={styles.input} onChange={e => setForm({...form, monto: e.target.value})} />
+          <textarea placeholder="Concepto" style={styles.textarea} onChange={e => setForm({...form, concepto: e.target.value})} />
+          <button type="submit" style={styles.btn}>Generar Recibo</button>
         </form>
 
-        <div style={{ marginTop: '40px' }}>
-          <h3 style={{ fontSize: '16px', color: '#64748b', marginBottom: '15px' }}>Historial de Movimientos</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '13px' }}>
-                <th style={{ padding: '10px' }}>FECHA</th>
-                <th>RECEPTOR</th>
-                <th>CONCEPTO</th>
-                <th>MONTO</th>
+        <table style={styles.table}>
+          <thead>
+            <tr><th>N°</th><th>Fecha</th><th>Receptor</th><th>Importe</th><th>Acciones</th></tr>
+          </thead>
+          <tbody>
+            {recibos.map(r => (
+              <tr key={r.id}>
+                <td>A000{r.id}</td>
+                <td>{new Date(r.fecha).toLocaleDateString()}</td>
+                <td>{r.receptor}</td>
+                <td>${Number(r.monto).toLocaleString()}</td>
+                <td><Download size={16} cursor="pointer" /></td>
               </tr>
-            </thead>
-            <tbody>
-              {recibos.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>{new Date(r.fecha).toLocaleDateString()}</td>
-                  <td style={{ fontSize: '14px' }}>{r.receptor}</td>
-                  <td style={{ fontSize: '14px', color: '#64748b' }}>{r.concepto}</td>
-                  <td style={{ fontSize: '14px', fontWeight: 'bold', color: '#16a34a' }}>${Number(r.monto).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
 
-const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' };
-const btnStyle = { gridColumn: 'span 2', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', gap: '10px' };
+const styles = {
+  container: { padding: '20px', backgroundColor: '#f4f4f4', minHeight: '100vh' },
+  card: { background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' },
+  header: { display: 'flex', gap: '10px', marginBottom: '20px' },
+  form: { display: 'grid', gap: '10px', marginBottom: '30px' },
+  input: { padding: '10px', border: '1px solid #ddd', borderRadius: '4px' },
+  textarea: { padding: '10px', border: '1px solid #ddd', borderRadius: '4px', minHeight: '60px' },
+  btn: { padding: '10px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+  table: { width: '100%', borderCollapse: 'collapse', marginTop: '10px' }
+};
 
 export default Recibos;
