@@ -13,11 +13,11 @@ import OrdenesCompra from './OrdenesCompra';
 import OrdenesPago from './OrdenesPago';
 import OrdenEspecial from './OrdenEspecial';
 import SolicitudCompra from './SolicitudCompra';
-import Recibos from './views/Recibos'; // Asegúrate de que la ruta sea correcta
+import Recibos from './Recibos'; // Asegúrate de que la ruta sea correcta
 
 // Componentes de Logística
-import Vehiculos from './views/Vehiculos';
-import OrdenesTrabajo from './views/OrdenesTrabajo';
+import Vehiculos from './Vehiculos';
+import OrdenesTrabajo from './OrdenesTrabajo';
 
 function App() {
   // Inicializamos el estado recuperando el usuario del localStorage

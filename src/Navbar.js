@@ -4,24 +4,22 @@ import {
   FileText, 
   Truck, 
   ShoppingCart, 
-  PlusCircle, 
-  CreditCard, 
-  Users, 
   LogOut,
   Wrench,
-  Receipt
+  Receipt,
+  CreditCard,
+  Users
 } from 'lucide-react';
 
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // Normalizamos el rol y el email
+  // Normalizamos el rol y el email para las validaciones
   const userRole = (user?.rol || user?.role || '').toLowerCase();
   const userEmail = user?.email || '';
   
-  // Definición de permisos
   const isAdmin = userRole === 'admin';
-  // El usuario de logística es Moreno o cualquier Admin
+  // Moreno o Admin tienen acceso a Logística
   const isLogistics = userEmail === 'm.moreno@alphaquimica.com.ar' || isAdmin;
 
   const handleLogoutClick = () => {
@@ -35,12 +33,12 @@ const Navbar = ({ user, onLogout }) => {
         <Link to="/" style={styles.logo}>🛡️ Alpha Química</Link>
         
         <div style={styles.links}>
-          {/* 1. SECCIÓN COMÚN: Todos ven solicitudes */}
+          {/* SECCIÓN COMÚN */}
           <Link to="/solicitudes" style={styles.link}>
             <FileText size={16} /> Solicitudes
           </Link>
 
-          {/* 2. SECCIÓN LOGÍSTICA: Moreno o Admin */}
+          {/* SECCIÓN LOGÍSTICA: Moreno o Admin */}
           {isLogistics && (
             <>
               <div style={styles.divider} />
@@ -53,7 +51,7 @@ const Navbar = ({ user, onLogout }) => {
             </>
           )}
 
-          {/* 3. SECCIÓN ADMINISTRACIÓN: Solo Admin */}
+          {/* SECCIÓN ADMINISTRACIÓN: Solo Admin */}
           {isAdmin && (
             <>
               <div style={styles.divider} />
@@ -107,7 +105,7 @@ const styles = {
   },
   leftSection: { display: 'flex', alignItems: 'center', gap: '30px' },
   logo: { color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '18px' },
-  links: { display: 'flex', alignItems: 'center', gap: '15px' },
+  links: { display: 'flex', alignItems: 'center', gap: '12px' },
   link: { 
     color: '#cbd5e1', 
     textDecoration: 'none', 
@@ -116,8 +114,7 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
     padding: '5px 8px',
-    borderRadius: '4px',
-    transition: 'background 0.2s'
+    borderRadius: '4px'
   },
   divider: {
     width: '1px',
