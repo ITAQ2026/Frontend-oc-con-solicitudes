@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import api from './api'; 
-import { Send, Clock, CheckCircle, XCircle, FileText, AlertTriangle } from 'lucide-react';
+import { Send, Clock, CheckCircle, XCircle, FileText, Plus, Trash2, Link as LinkIcon } from 'lucide-react';
 
 const SolicitudCompra = ({ user }) => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Estado para las líneas de productos
+  const [items, setItems] = useState([{ producto: '', cantidad: 1, precio: '' }]);
+  
   const [nuevaSolicitud, setNuevaSolicitud] = useState({
     area: '',
     solicitante: user?.nombre || '',
-    descripcion: '',
-    cantidad: 1,
     justificacion: '',
-    fecha_limite: '',
     urgencia: 'Conveniente',
     link_referencia: ''
   });
 
-  // 1. CARGAR DATOS (Corregido con /api/)
   const cargarSolicitudes = async () => {
-    if (!user?.id) return; // Protección si el usuario no ha cargado
+    if (!user?.id) return;
     try {
-      // Ajuste de ruta: Ahora todas llevan /api al inicio
       const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuario_id=${user.id}`);
       setSolicitudes(res.data);
     } catch (err) {
@@ -32,157 +31,166 @@ const SolicitudCompra = ({ user }) => {
     if (user) cargarSolicitudes();
   }, [user]);
 
-  // 2. CREAR SOLICITUD (Corregido con /api/)
+  // --- LÓGICA DE ÍTEMS DINÁMICOS ---
+  const agregarFila = () => setItems([...items, { producto: '', cantidad: 1, precio: '' }]);
+  
+  const eliminarFila = (index) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  };
+
+  const actualizarItem = (index, campo, valor) => {
+    const nuevosItems = [...items];
+    nuevosItems[index][campo] = valor;
+    setItems(nuevosItems);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Ajuste de ruta: /api/solicitudes
       await api.post('/api/solicitudes', { 
         ...nuevaSolicitud, 
+        items: JSON.stringify(items), // Enviamos los productos como JSON
+        estado: 'En Revisión',
         usuario_id: user.id 
       });
       
-      alert("✅ Solicitud enviada con éxito");
-      
-      // Limpiar solo los campos de texto, mantener área y urgencia por comodidad
-      setNuevaSolicitud({ 
-        ...nuevaSolicitud, 
-        descripcion: '', 
-        cantidad: 1, 
-        justificacion: '',
-        link_referencia: '' 
-      });
-      
+      alert("✅ Solicitud enviada en revisión");
+      setItems([{ producto: '', cantidad: 1, precio: '' }]);
+      setNuevaSolicitud({ ...nuevaSolicitud, justificacion: '', link_referencia: '' });
       cargarSolicitudes();
     } catch (err) {
-      console.error("Error al enviar:", err);
-      alert("❌ Error al enviar solicitud. Revisa la consola.");
+      alert("❌ Error al enviar");
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. CAMBIAR ESTADO (Corregido con /api/)
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
-      // Ajuste de ruta: /api/solicitudes/:id/estado
       await api.patch(`/api/solicitudes/${id}/estado`, { estado: nuevoEstado });
       cargarSolicitudes();
     } catch (err) {
-      console.error("Error al cambiar estado:", err);
       alert("No se pudo cambiar el estado");
     }
   };
 
-  // Si no hay usuario, mostrar un aviso simple
-  if (!user) return <div style={{padding: '20px'}}>Cargando sesión de usuario...</div>;
+  if (!user) return <div style={{padding: '20px'}}>Cargando sesión...</div>;
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}><FileText /> Gestión de Solicitudes de Compra</h2>
+      <h2 style={styles.title}><FileText /> Gestión de Solicitudes</h2>
 
-      {/* FORMULARIO: Solo se muestra a usuarios comunes */}
       {user.rol === 'user' && (
         <div style={styles.card}>
           <h3 style={styles.sectionTitle}>Nueva Solicitud</h3>
-          <form onSubmit={handleSubmit} style={styles.gridForm}>
-            <input style={styles.input} placeholder="Área" required value={nuevaSolicitud.area} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, area: e.target.value})} />
-            <input style={styles.input} type="number" placeholder="Cantidad" required value={nuevaSolicitud.cantidad} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, cantidad: e.target.value})} />
-            
-            <select style={styles.input} value={nuevaSolicitud.urgencia} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, urgencia: e.target.value})}>
-              <option value="Conveniente">Conveniente</option>
-              <option value="Necesario">Necesario</option>
-              <option value="Crítico">Crítico</option>
-            </select>
-            
-            <input style={styles.input} type="date" required value={nuevaSolicitud.fecha_limite} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, fecha_limite: e.target.value})} />
-            
-            <textarea style={{...styles.input, gridColumn: 'span 2'}} placeholder="Descripción detallada del bien o servicio" required value={nuevaSolicitud.descripcion} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, descripcion: e.target.value})} />
-            <textarea style={{...styles.input, gridColumn: 'span 2'}} placeholder="Justificación de la necesidad" required value={nuevaSolicitud.justificacion} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, justificacion: e.target.value})} />
-            
-            <input style={{...styles.input, gridColumn: 'span 2'}} placeholder="Link de referencia / Foto (Opcional)" value={nuevaSolicitud.link_referencia} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, link_referencia: e.target.value})} />
+          <form onSubmit={handleSubmit}>
+            <div style={styles.gridForm}>
+              <input style={styles.input} placeholder="Área" required value={nuevaSolicitud.area} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, area: e.target.value})} />
+              <select style={styles.input} value={nuevaSolicitud.urgencia} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, urgencia: e.target.value})}>
+                <option value="Conveniente">Conveniente</option>
+                <option value="Necesario">Necesario</option>
+                <option value="Crítico">Crítico</option>
+              </select>
+            </div>
+
+            <div style={{marginTop: '20px'}}>
+              <label style={styles.label}>Productos Solicitados:</label>
+              {items.map((item, index) => (
+                <div key={index} style={styles.rowItem}>
+                  <input style={{...styles.input, flex: 3}} placeholder="Producto / Descripción" required value={item.producto} onChange={(e) => actualizarItem(index, 'producto', e.target.value)} />
+                  <input style={{...styles.input, flex: 1}} type="number" placeholder="Cant." required value={item.cantidad} onChange={(e) => actualizarItem(index, 'cantidad', e.target.value)} />
+                  <button type="button" onClick={() => eliminarFila(index)} style={styles.btnDelete}><Trash2 size={16}/></button>
+                </div>
+              ))}
+              <button type="button" onClick={agregarFila} style={styles.btnAdd}><Plus size={14}/> Agregar otro producto</button>
+            </div>
+
+            <textarea style={{...styles.input, width: '100%', marginTop: '15px'}} placeholder="Justificación" required value={nuevaSolicitud.justificacion} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, justificacion: e.target.value})} />
+            <input style={{...styles.input, width: '100%', marginTop: '10px'}} placeholder="Link de referencia (opcional)" value={nuevaSolicitud.link_referencia} onChange={(e) => setNuevaSolicitud({...nuevaSolicitud, link_referencia: e.target.value})} />
             
             <button type="submit" disabled={loading} style={styles.btnSubmit}>
-              {loading ? "Enviando..." : "Enviar Solicitud"} <Send size={16} />
+              {loading ? "Enviando..." : "ENVIAR A REVISIÓN"} <Send size={16} />
             </button>
           </form>
         </div>
       )}
 
-      {/* LISTADO DE SOLICITUDES */}
       <div style={styles.card}>
-        <h3 style={styles.sectionTitle}>{user.rol === 'admin' ? "Todas las Solicitudes Recibidas" : "Mis Solicitudes Enviadas"}</h3>
-        <div style={{overflowX: 'auto'}}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.trHead}>
-                <th>Fecha</th>
-                <th>Área</th>
-                <th>Descripción</th>
-                <th>Urgencia</th>
-                <th>Estado</th>
-                {user.rol === 'admin' && <th>Acciones</th>}
+        <h3 style={styles.sectionTitle}>{user.rol === 'admin' ? "Panel de Revisión" : "Mis Solicitudes"}</h3>
+        <table style={styles.table}>
+          <thead>
+            <tr style={styles.trHead}>
+              <th>Fecha</th>
+              <th>Área / Solicitante</th>
+              <th>Productos / Cantidad</th>
+              <th>Link</th>
+              <th>Estado</th>
+              {user.rol === 'admin' && <th>Acciones</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {solicitudes.map((s) => (
+              <tr key={s.id} style={styles.trBody}>
+                <td>{new Date(s.fecha_creacion).toLocaleDateString()}</td>
+                <td>
+                   <div style={{fontWeight:'bold'}}>{s.area}</div>
+                   <div style={{fontSize:'12px', color:'#64748b'}}>{s.solicitante}</div>
+                </td>
+                <td>
+                  {(() => {
+                    try {
+                      const itemsParsed = typeof s.items === 'string' ? JSON.parse(s.items) : s.items;
+                      return itemsParsed?.map((it, i) => (
+                        <div key={i} style={{fontSize:'13px'}}>• {it.producto} <strong>(x{it.cantidad})</strong></div>
+                      ));
+                    } catch (e) { return s.descripcion; }
+                  })()}
+                </td>
+                <td>
+                  {s.link_referencia && <a href={s.link_referencia} target="_blank" rel="noreferrer"><LinkIcon size={18} color="#2563eb"/></a>}
+                </td>
+                <td><span style={styles.badgeEstado(s.estado)}>{s.estado}</span></td>
+                {user.rol === 'admin' && (
+                  <td style={styles.actions}>
+                    <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove}><CheckCircle size={20}/></button>
+                    <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject}><XCircle size={20}/></button>
+                  </td>
+                )}
               </tr>
-            </thead>
-            <tbody>
-              {solicitudes.length === 0 ? (
-                <tr><td colSpan="6" style={{textAlign:'center', padding:'20px', color:'#64748b'}}>No hay solicitudes registradas.</td></tr>
-              ) : (
-                solicitudes.map((s) => (
-                  <tr key={s.id} style={styles.trBody}>
-                    <td>{new Date(s.fecha_creacion).toLocaleDateString()}</td>
-                    <td>{s.area}</td>
-                    <td>{s.descripcion}</td>
-                    <td>
-                      <span style={styles.badgeUrgencia(s.urgencia)}>{s.urgencia}</span>
-                    </td>
-                    <td>
-                      <span style={styles.badgeEstado(s.estado)}>{s.estado}</span>
-                    </td>
-                    {user.rol === 'admin' && (
-                      <td style={styles.actions}>
-                        <button onClick={() => cambiarEstado(s.id, 'Aceptada')} style={styles.btnApprove} title="Aceptar"><CheckCircle size={18}/></button>
-                        <button onClick={() => cambiarEstado(s.id, 'Cancelada')} style={styles.btnReject} title="Cancelar"><XCircle size={18}/></button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: { padding: '20px', maxWidth: '1100px', margin: '0 auto', fontFamily: 'sans-serif' },
-  title: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', marginBottom: '25px' },
+  container: { padding: '20px', maxWidth: '1200px', margin: '0 auto' },
+  title: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' },
   card: { background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '20px' },
   sectionTitle: { fontSize: '18px', fontWeight: 'bold', color: '#334155', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' },
   gridForm: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' },
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' },
-  btnSubmit: { gridColumn: 'span 2', background: '#2563eb', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '15px' },
-  table: { width: '100%', borderCollapse: 'collapse', marginTop: '10px' },
-  trHead: { textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '14px' },
-  trBody: { borderBottom: '1px solid #f1f5f9', color: '#1e293b', fontSize: '14px' },
-  badgeUrgencia: (u) => ({
-    padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
-    background: u === 'Crítico' ? '#fee2e2' : u === 'Necesario' ? '#fef3c7' : '#f1f5f9',
-    color: u === 'Crítico' ? '#991b1b' : u === 'Necesario' ? '#92400e' : '#475569',
-    textTransform: 'uppercase'
-  }),
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  label: { fontSize: '13px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px', display: 'block' },
+  rowItem: { display: 'flex', gap: '10px', marginBottom: '10px' },
+  btnDelete: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer' },
+  btnAdd: { background: 'none', border: '1px dashed #cbd5e1', padding: '10px', width: '100%', cursor: 'pointer', borderRadius: '8px', color: '#64748b' },
+  btnSubmit: { width: '100%', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer', marginTop: '20px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  trHead: { textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b' },
+  trBody: { borderBottom: '1px solid #f1f5f9' },
   badgeEstado: (e) => ({
     padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold',
-    background: e === 'Aceptada' ? '#dcfce7' : e === 'Cancelada' ? '#fee2e2' : '#e0f2fe',
-    color: e === 'Aceptada' ? '#166534' : e === 'Cancelada' ? '#991b1b' : '#075985',
-    textTransform: 'uppercase'
+    background: e === 'Aprobado' ? '#dcfce7' : e === 'Rechazado' ? '#fee2e2' : '#fef3c7',
+    color: e === 'Aprobado' ? '#166534' : e === 'Rechazado' ? '#991b1b' : '#92400e',
   }),
-  actions: { display: 'flex', gap: '10px', padding: '10px 0' },
-  btnApprove: { background: 'none', border: 'none', color: '#166534', cursor: 'pointer', transition: 'transform 0.2s' },
-  btnReject: { background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', transition: 'transform 0.2s' }
+  actions: { display: 'flex', gap: '15px' },
+  btnApprove: { background: 'none', border: 'none', color: '#166534', cursor: 'pointer' },
+  btnReject: { background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer' }
 };
 
 export default SolicitudCompra;
