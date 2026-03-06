@@ -1,14 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// Componentes Base
 import Navbar from './Navbar';
 import Dashboard from './Dashboard';
+import Login from './Login';
+import UsuariosGestion from './UsuariosGestion';
+
+// Componentes de Compras / Administración
 import Proveedores from './Proveedores';
 import OrdenesCompra from './OrdenesCompra';
 import OrdenesPago from './OrdenesPago';
 import OrdenEspecial from './OrdenEspecial';
 import SolicitudCompra from './SolicitudCompra';
-import Login from './Login';
-import UsuariosGestion from './UsuariosGestion';
+import Recibos from './views/Recibos'; // Asegúrate de que la ruta sea correcta
+
+// Componentes de Logística
+import Vehiculos from './views/Vehiculos';
+import OrdenesTrabajo from './views/OrdenesTrabajo';
 
 function App() {
   // Inicializamos el estado recuperando el usuario del localStorage
@@ -25,7 +34,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('token'); // Limpiamos también el token por seguridad
+    localStorage.removeItem('token');
   };
 
   // Si no hay usuario, mostramos únicamente la pantalla de Login
@@ -33,38 +42,46 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Definimos de forma segura si el usuario es administrador
+  // Lógica de Permisos
   const userRole = (user?.rol || user?.role || '').toLowerCase();
+  const userEmail = user?.email || '';
+  
   const isAdmin = userRole === 'admin';
+  const isLogistics = userEmail === 'm.moreno@alphaquimica.com.ar' || isAdmin;
 
   return (
     <Router>
       <div style={styles.app}>
-        {/* Pasamos el usuario a la Navbar para que filtre los botones del menú */}
+        {/* Navbar recibe user para filtrar el menú visualmente */}
         <Navbar user={user} onLogout={handleLogout} />
         
         <main style={styles.main}>
           <Routes>
-            {/* --- RUTAS ACCESIBLES PARA TODOS LOS LOGUEADOS --- */}
+            {/* --- RUTAS ACCESIBLES PARA TODOS --- */}
             <Route path="/" element={<Dashboard user={user} />} />
             <Route path="/solicitudes" element={<SolicitudCompra user={user} />} />
 
-            {/* --- RUTAS PROTEGIDAS (SOLO ADMIN) --- */}
-            {isAdmin ? (
+            {/* --- RUTAS DE LOGÍSTICA (Moreno o Admin) --- */}
+            {isLogistics && (
+              <>
+                <Route path="/vehiculos" element={<Vehiculos />} />
+                <Route path="/ordenes-trabajo" element={<OrdenesTrabajo />} />
+              </>
+            )}
+
+            {/* --- RUTAS DE ADMINISTRACIÓN (Solo Admin) --- */}
+            {isAdmin && (
               <>
                 <Route path="/proveedores" element={<Proveedores />} />
                 <Route path="/compras" element={<OrdenesCompra />} />
                 <Route path="/pagos" element={<OrdenesPago />} />
                 <Route path="/orden-especial" element={<OrdenEspecial />} />
+                <Route path="/recibos" element={<Recibos />} />
                 <Route path="/usuarios" element={<UsuariosGestion />} />
               </>
-            ) : (
-              /* Si un usuario común intenta entrar a una ruta de admin, 
-                 lo redirigimos automáticamente a sus solicitudes */
-              <Route path="*" element={<Navigate to="/solicitudes" replace />} />
             )}
 
-            {/* Redirección por defecto para cualquier ruta no encontrada */}
+            {/* Redirección de seguridad: si no tiene permiso o no existe la ruta */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

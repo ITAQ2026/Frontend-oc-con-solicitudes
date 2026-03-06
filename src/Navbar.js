@@ -7,15 +7,22 @@ import {
   PlusCircle, 
   CreditCard, 
   Users, 
-  LogOut 
+  LogOut,
+  Wrench,
+  Receipt
 } from 'lucide-react';
 
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // Normalizamos el rol para evitar errores de mayúsculas/minúsculas
+  // Normalizamos el rol y el email
   const userRole = (user?.rol || user?.role || '').toLowerCase();
+  const userEmail = user?.email || '';
+  
+  // Definición de permisos
   const isAdmin = userRole === 'admin';
+  // El usuario de logística es Moreno o cualquier Admin
+  const isLogistics = userEmail === 'm.moreno@alphaquimica.com.ar' || isAdmin;
 
   const handleLogoutClick = () => {
     onLogout();
@@ -28,20 +35,36 @@ const Navbar = ({ user, onLogout }) => {
         <Link to="/" style={styles.logo}>🛡️ Alpha Química</Link>
         
         <div style={styles.links}>
+          {/* 1. SECCIÓN COMÚN: Todos ven solicitudes */}
           <Link to="/solicitudes" style={styles.link}>
             <FileText size={16} /> Solicitudes
           </Link>
 
+          {/* 2. SECCIÓN LOGÍSTICA: Moreno o Admin */}
+          {isLogistics && (
+            <>
+              <div style={styles.divider} />
+              <Link to="/vehiculos" style={styles.link}>
+                <Truck size={16} /> Vehículos
+              </Link>
+              <Link to="/ordenes-trabajo" style={styles.link}>
+                <Wrench size={16} /> O. Trabajo
+              </Link>
+            </>
+          )}
+
+          {/* 3. SECCIÓN ADMINISTRACIÓN: Solo Admin */}
           {isAdmin && (
             <>
+              <div style={styles.divider} />
               <Link to="/proveedores" style={styles.link}>
                 <Truck size={16} /> Proveedores
               </Link>
               <Link to="/compras" style={styles.link}>
                 <ShoppingCart size={16} /> Compras
               </Link>
-              <Link to="/orden-especial" style={styles.link}>
-                <PlusCircle size={16} /> O. Especial
+              <Link to="/recibos" style={styles.link}>
+                <Receipt size={16} /> Recibos
               </Link>
               <Link to="/pagos" style={styles.link}>
                 <CreditCard size={16} /> Pagos
@@ -88,10 +111,19 @@ const styles = {
   link: { 
     color: '#cbd5e1', 
     textDecoration: 'none', 
-    fontSize: '14px',
+    fontSize: '13px',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px'
+    gap: '6px',
+    padding: '5px 8px',
+    borderRadius: '4px',
+    transition: 'background 0.2s'
+  },
+  divider: {
+    width: '1px',
+    height: '24px',
+    background: '#334155',
+    margin: '0 5px'
   },
   userSection: { 
     display: 'flex', 
@@ -103,11 +135,12 @@ const styles = {
   userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
   userName: { fontSize: '13px', fontWeight: '500' },
   roleTag: { 
-    fontSize: '10px', 
+    fontSize: '9px', 
     color: 'white', 
     padding: '1px 6px', 
     borderRadius: '4px',
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
+    marginTop: '2px'
   },
   logoutBtn: { 
     background: '#ef4444', 
@@ -118,7 +151,8 @@ const styles = {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px'
+    gap: '6px',
+    fontSize: '13px'
   }
 };
 
