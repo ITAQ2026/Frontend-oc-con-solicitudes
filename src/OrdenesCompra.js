@@ -1,9 +1,9 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from './api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Package, Trash2, Plus, Save, Download, ClipboardList } from 'lucide-react';
-
+ 
 
 const OrdenesCompra = () => {
   // Pegar aquí el código Base64 de la imagen image_ca0300.png
@@ -34,46 +34,34 @@ const OrdenesCompra = () => {
         api.get('/api/ordenes-compra')
       ]);
       setProveedores(resProv.data || []);
-      
-      // FILTRO CRÍTICO: Solo mostramos solicitudes en estado "Aprobado"
       const filtradas = (resSol.data || []).filter(s => s.estado === 'Aprobado');
       setSolicitudesAprobadas(filtradas);
-      
       setHistorial(resHistorial.data || []);
     } catch (err) {
       console.error("Error cargando datos:", err);
     }
   };
 
-  // --- LÓGICA DE AUTOCOMPLETADO ---
   const manejarSeleccionSolicitud = (id) => {
     if (!id) {
       setForm({ ...form, solicitudId: '' });
       setItems([{ producto: '', cantidad: 1, precio: '' }]);
       return;
     }
-
     const sol = solicitudesAprobadas.find(s => String(s.id) === String(id));
-    
     if (sol) {
       setForm({ ...form, solicitudId: id });
-      
       let itemsExtraidos = [];
       try {
-        // Parseamos el JSON de la base de datos
         itemsExtraidos = typeof sol.items === 'string' ? JSON.parse(sol.items) : (sol.items || []);
       } catch (e) {
-        // Fallback para datos antiguos
         itemsExtraidos = [{ producto: sol.descripcion || 'Producto', cantidad: sol.cantidad || 1 }];
       }
-
-      // Inyectamos los productos en la tabla actual
       const nuevosItems = itemsExtraidos.map(i => ({
         producto: i.producto || '',
         cantidad: i.cantidad || 1,
-        precio: i.precio || '' // El admin completa el precio real
+        precio: '' // Ahora es opcional completarlo
       }));
-
       setItems(nuevosItems);
     }
   };
@@ -89,13 +77,9 @@ const OrdenesCompra = () => {
       ? `OC-${String(datosOrden.id).padStart(4, '0')}` 
       : (form.solicitudId ? `SC-${form.solicitudId}` : 'NUEVA');
 
-    // --- CABECERA ---
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 45, 'F');
-    
-    try { 
-      doc.addImage(LOGO_ALPHA, 'PNG', 15, 5, 75, 35); 
-    } catch (e) { console.error("Logo no encontrado"); }
+    try { doc.addImage(LOGO_ALPHA, 'PNG', 15, 5, 75, 35); } catch (e) {}
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22); doc.setFont("helvetica", "bold");
@@ -103,7 +87,6 @@ const OrdenesCompra = () => {
     doc.setFontSize(10); doc.setFont("helvetica", "normal");
     doc.text("ALPHA QUÍMICA S.R.L. | CUIT: 30-60968636-3", 200, 35, { align: 'right' });
 
-    // --- CUADRO DE DATOS ---
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(15, 50, 180, 32, 3, 3, 'F'); 
@@ -120,8 +103,7 @@ const OrdenesCompra = () => {
     doc.text(`${new Date(info.fecha || new Date()).toLocaleDateString()}`, 158, 60);
     doc.text(`${idOrden}`, 158, 70);
 
-    // --- TABLA ---
-    const bodyTabla = Array.isArray(itemsFinales) ? itemsFinales : JSON.parse(itemsFinales);
+    const bodyTabla = typeof itemsFinales === 'string' ? JSON.parse(itemsFinales) : itemsFinales;
 
     autoTable(doc, {
       startY: 90,
@@ -137,16 +119,13 @@ const OrdenesCompra = () => {
       styles: { fontSize: 9 }
     });
 
-    // --- TOTAL ---
     const total = bodyTabla.reduce((acc, i) => acc + (i.cantidad * (i.precio || 0)), 0);
     doc.setFont("helvetica", "bold");
     doc.text(`TOTAL ORDEN: $ ${total.toLocaleString()}`, 200, doc.lastAutoTable.finalY + 10, { align: 'right' });
 
-    // --- FIRMAS ---
     const firmaY = 255;
     doc.line(30, firmaY, 85, firmaY); 
     doc.line(125, firmaY, 180, firmaY); 
-    doc.setFontSize(9);
     doc.text("AUTORIZÓ", 57, firmaY + 5, { align: 'center' });
     doc.text("RECIBIÓ / RETIRÓ", 152, firmaY + 5, { align: 'center' });
 
@@ -155,20 +134,24 @@ const OrdenesCompra = () => {
 
   const enviar = async (e) => {
     e.preventDefault();
+
+    // Se eliminó la validación de precio obligatorio
     const datosParaGuardar = {
       ...form,
       proveedor: form.proveedorNombre, 
       items: JSON.stringify(items) 
     };
+
     try {
       await api.post('/api/ordenes-compra', datosParaGuardar);
       exportarPDF(items);
-      alert("✅ Orden guardada y PDF generado.");
+      alert("✅ Orden guardada correctamente.");
       cargarDatos();
-      // Limpiar formulario
       setItems([{ producto: '', cantidad: 1, precio: '' }]);
       setForm({ ...form, solicitudId: '', proveedorNombre: '', retira: '' });
-    } catch (err) { alert("❌ Error al guardar."); }
+    } catch (err) { 
+      alert("❌ Error al guardar. Verifica la conexión."); 
+    }
   };
 
   return (
@@ -177,20 +160,11 @@ const OrdenesCompra = () => {
         <h2 style={styles.header}><Package size={24} /> Gestión de Orden de Compra</h2>
         
         <form onSubmit={enviar}>
-          {/* SECCIÓN VÍNCULO CON SOLICITUD */}
           <div style={styles.sectionVinculo}>
             <label style={styles.labelVinculo}><ClipboardList size={14}/> VINCULAR SOLICITUD APROBADA</label>
-            <select 
-              style={styles.inputVinculo} 
-              value={form.solicitudId} 
-              onChange={e => manejarSeleccionSolicitud(e.target.value)}
-            >
-              <option value="">-- Compra Directa (Sin Solicitud) --</option>
-              {solicitudesAprobadas.map(s => (
-                <option key={s.id} value={s.id}>
-                  SC-{s.id} | {s.solicitante} ({s.area})
-                </option>
-              ))}
+            <select style={styles.inputVinculo} value={form.solicitudId} onChange={e => manejarSeleccionSolicitud(e.target.value)}>
+              <option value="">-- Compra Directa --</option>
+              {solicitudesAprobadas.map(s => <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante}</option>)}
             </select>
           </div>
 
@@ -198,7 +172,7 @@ const OrdenesCompra = () => {
             <div>
               <label style={styles.label}>Proveedor</label>
               <select style={styles.input} required value={form.proveedorNombre} onChange={e => setForm({ ...form, proveedorNombre: e.target.value })}>
-                <option value="">Seleccionar Proveedor...</option>
+                <option value="">Seleccionar...</option>
                 {proveedores.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
               </select>
             </div>
@@ -213,52 +187,24 @@ const OrdenesCompra = () => {
             </div>
           </div>
 
-          {/* TABLA DE ITEMS DINÁMICA */}
           <div style={styles.sectionItems}>
             <label style={styles.label}>Items de la Orden</label>
             {items.map((item, index) => (
               <div key={index} style={styles.itemRow}>
-                <input 
-                  style={{ ...styles.input, flex: 3 }} 
-                  placeholder="Producto" 
-                  required
-                  value={item.producto} 
-                  onChange={e => {
-                    const n = [...items]; n[index].producto = e.target.value; setItems(n);
-                  }} 
-                />
-                <input 
-                  style={{ ...styles.input, flex: 0.8, textAlign: 'center' }} 
-                  type="number" 
-                  placeholder="Cant"
-                  required
-                  value={item.cantidad} 
-                  onChange={e => {
-                    const n = [...items]; n[index].cantidad = e.target.value; setItems(n);
-                  }} 
-                />
-                <input 
-                  style={{ ...styles.input, flex: 1.2 }} 
-                  type="number" 
-                  placeholder="P. Unit" 
-                  required
-                  value={item.precio} 
-                  onChange={e => {
-                    const n = [...items]; n[index].precio = e.target.value; setItems(n);
-                  }} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setItems(items.filter((_, i) => i !== index))} 
-                  style={styles.btnDeleteRow}
-                >
-                  <Trash2 size={14}/>
-                </button>
+                <input style={{ ...styles.input, flex: 3 }} placeholder="Producto" required value={item.producto} 
+                  onChange={e => { const n = [...items]; n[index].producto = e.target.value; setItems(n); }} />
+                
+                <input style={{ ...styles.input, flex: 0.8, textAlign: 'center' }} type="number" required value={item.cantidad} 
+                  onChange={e => { const n = [...items]; n[index].cantidad = e.target.value; setItems(n); }} />
+                
+                {/* PRECIO AHORA ES OPCIONAL (Sin 'required') */}
+                <input style={{ ...styles.input, flex: 1.2 }} type="number" step="0.01" placeholder="P. Unit" value={item.precio} 
+                  onChange={e => { const n = [...items]; n[index].precio = e.target.value; setItems(n); }} />
+                
+                <button type="button" onClick={() => setItems(items.filter((_, i) => i !== index))} style={styles.btnDeleteRow}><Trash2 size={14}/></button>
               </div>
             ))}
-            <button type="button" onClick={agregarFila} style={styles.btnAdd}>
-              <Plus size={14}/> Agregar ítem manualmente
-            </button>
+            <button type="button" onClick={agregarFila} style={styles.btnAdd}><Plus size={14}/> Agregar ítem</button>
           </div>
 
           <div style={styles.gridRow}>
@@ -267,43 +213,36 @@ const OrdenesCompra = () => {
               <input style={styles.input} value={form.autoriza} onChange={e => setForm({ ...form, autoriza: e.target.value })} />
             </div>
             <div>
-              <label style={styles.label}>Persona que Retira / Recibe</label>
-              <input style={styles.input} placeholder="Nombre completo" value={form.retira} onChange={e => setForm({ ...form, retira: e.target.value })} />
+              <label style={styles.label}>Retira / Recibe</label>
+              <input style={styles.input} placeholder="Nombre" value={form.retira} onChange={e => setForm({ ...form, retira: e.target.value })} />
             </div>
           </div>
 
           <button type="submit" style={styles.btnSubmit}><Save size={20}/> GUARDAR Y GENERAR PDF</button>
         </form>
 
-        {/* HISTORIAL */}
         <div style={styles.historialContainer}>
-          <h3 style={{ marginBottom: '20px', color: '#0f172a' }}>Historial Reciente</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left' }}>
-                  <th style={styles.th}>ID</th>
-                  <th style={styles.th}>Proveedor</th>
-                  <th style={styles.th}>Fecha</th>
-                  <th style={styles.th}>Acción</th>
+          <h3 style={{ marginBottom: '20px' }}>Historial Reciente</h3>
+          <table style={styles.table}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left' }}>
+                <th style={styles.th}>ID</th>
+                <th style={styles.th}>Proveedor</th>
+                <th style={styles.th}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historial.map(h => (
+                <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={styles.td}>OC-{h.id}</td>
+                  <td style={styles.td}>{h.proveedor}</td>
+                  <td style={styles.td}>
+                    <button onClick={() => exportarPDF(h.items, h)} style={styles.btnMini}><Download size={14}/> Reimprimir</button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {historial.map(h => (
-                  <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={styles.td}>OC-{String(h.id).padStart(4, '0')}</td>
-                    <td style={styles.td}>{h.proveedor}</td>
-                    <td style={styles.td}>{new Date(h.fecha).toLocaleDateString()}</td>
-                    <td style={styles.td}>
-                      <button onClick={() => exportarPDF(h.items, h)} style={styles.btnMini}>
-                        <Download size={14}/> Reimprimir
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
