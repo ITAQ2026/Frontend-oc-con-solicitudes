@@ -20,7 +20,7 @@ const Navbar = ({ user, onLogout }) => {
   
   const isAdmin = userRole === 'admin';
   // IMPORTANTE: Validación exacta para Moreno o cualquier Admin
-  const isLogistics = userEmail === 'm.moreno@alphaquimica.com.ar' || isAdmin;
+  const isLogistics = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || isAdmin;
 
   const handleLogoutClick = () => {
     onLogout();
