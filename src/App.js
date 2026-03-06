@@ -13,7 +13,7 @@ import OrdenesCompra from './OrdenesCompra';
 import OrdenesPago from './OrdenesPago';
 import OrdenEspecial from './OrdenEspecial';
 import SolicitudCompra from './SolicitudCompra';
-import Recibos from './Recibos'; // Asegúrate de que la ruta sea correcta
+import Recibos from './Recibos';
 
 // Componentes de Logística
 import Vehiculos from './Vehiculos';
@@ -42,17 +42,22 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Lógica de Permisos
-  const userRole = (user?.rol || user?.role || '').toLowerCase();
-  const userEmail = user?.email || '';
+  // --- LÓGICA DE PERMISOS CORREGIDA ---
+  const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
+  const userEmail = (user?.email || '').toLowerCase().trim();
   
   const isAdmin = userRole === 'admin';
-  const isLogistics = userEmail === 'm.moreno@alphaquimica.com.ar' || isAdmin;
+
+  // Validamos Moreno con ambos dominios por seguridad (SRL y normal)
+  const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
+                   userEmail === 'm.moreno@alphaquimica.com.ar';
+
+  const isLogistics = isMoreno || isAdmin;
 
   return (
     <Router>
       <div style={styles.app}>
-        {/* Navbar recibe user para filtrar el menú visualmente */}
+        {/* El Navbar usa la misma lógica interna para mostrar los botones */}
         <Navbar user={user} onLogout={handleLogout} />
         
         <main style={styles.main}>
@@ -61,7 +66,7 @@ function App() {
             <Route path="/" element={<Dashboard user={user} />} />
             <Route path="/solicitudes" element={<SolicitudCompra user={user} />} />
 
-            {/* --- RUTAS DE LOGÍSTICA (Moreno o Admin) --- */}
+            {/* --- RUTAS DE LOGÍSTICA: Moreno o Admin --- */}
             {isLogistics && (
               <>
                 <Route path="/vehiculos" element={<Vehiculos />} />
@@ -69,7 +74,7 @@ function App() {
               </>
             )}
 
-            {/* --- RUTAS DE ADMINISTRACIÓN (Solo Admin) --- */}
+            {/* --- RUTAS DE ADMINISTRACIÓN: Solo Admin --- */}
             {isAdmin && (
               <>
                 <Route path="/proveedores" element={<Proveedores />} />
@@ -81,7 +86,7 @@ function App() {
               </>
             )}
 
-            {/* Redirección de seguridad: si no tiene permiso o no existe la ruta */}
+            {/* Redirección de seguridad */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

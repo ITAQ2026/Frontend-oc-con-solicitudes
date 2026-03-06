@@ -14,13 +14,22 @@ import {
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // Normalizamos el rol y el email para evitar errores de mayúsculas
+  // 1. Normalizamos los datos (quitamos espacios y pasamos a minúsculas)
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
   
+  // 2. Definimos permisos
   const isAdmin = userRole === 'admin';
-  // IMPORTANTE: Validación exacta para Moreno o cualquier Admin
-  const isLogistics = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || isAdmin;
+  
+  // IMPORTANTE: He puesto las dos variantes por si acaso, 
+  // pero la principal es alphaquimicasrl.com.ar
+  const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
+                   userEmail === 'm.moreno@alphaquimica.com.ar';
+
+  const isLogistics = isMoreno || isAdmin;
+
+  // LOG PARA DEPURACIÓN (Míralo en F12 si sigue fallando)
+  console.log("Navbar Debug - Email:", userEmail, "isLogistics:", isLogistics);
 
   const handleLogoutClick = () => {
     onLogout();
@@ -38,7 +47,7 @@ const Navbar = ({ user, onLogout }) => {
             <FileText size={16} /> Solicitudes
           </Link>
 
-          {/* SECCIÓN LOGÍSTICA: Visible para Moreno y Admin */}
+          {/* SECCIÓN LOGÍSTICA: Moreno o Admin */}
           {isLogistics && (
             <>
               <div style={styles.divider} />
