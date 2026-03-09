@@ -33,62 +33,37 @@ const OrdenesTrabajo = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.vehiculoId) return alert("Selecciona un vehículo");
-    
     setLoading(true);
 
-    // 🚀 MEGA-PAYLOAD: Enviamos español + inglés + camelCase
-    // Para que el DTO del Backend capture lo que reconozca.
+    // 🎯 EL CAMBIO RADICAL:
+    // El servidor espera nombres en inglés/camelCase para validarlos,
+    // aunque en la base de datos se guarden con otros nombres.
     const payload = {
-      // 1. Variantes de Descripción
-      descripcion_falla: form.descripcion_falla.trim(),
-      descripcionFalla: form.descripcion_falla.trim(),
-      description: form.descripcion_falla.trim(),
-
-      // 2. Variantes de Vehículo
-      vehiculoId: parseInt(form.vehiculoId),
-      vehicleId: parseInt(form.vehiculoId),
-      vehiculo: { id: parseInt(form.vehiculoId) },
-      vehicle: { id: parseInt(form.vehiculoId) },
-
-      // 3. Variantes de Kilometraje
-      kilometraje: parseInt(form.kilometraje),
-      mileage: parseInt(form.kilometraje),
-
-      // 4. Variantes de Responsable
-      responsable: form.responsable.trim(),
-      responsible: form.responsable.trim(),
-
-      // 5. Campos de sistema (JSONB y Strings)
-      tareas_realizadas: "Pendiente",
-      tareasRealizadas: "Pendiente",
-      tasks: "Pendiente",
-      repuestos_utilizados: [], // JSONB vacío
-      repuestosUtilizados: [],
-      spareParts: [],
-      
-      fecha: new Date().toISOString()
+      description: form.descripcion_falla.trim(), // 'descripcion_falla' -> 'description'
+      tasks: "Pendiente",                         // 'tareas_realizadas' -> 'tasks'
+      spareParts: {},                             // 'repuestos_utilizados' -> 'spareParts'
+      kilometraje: parseInt(form.kilometraje),    // Este SI llega ($1)
+      responsable: form.responsable.trim(),       // Este SI llega ($2)
+      vehiculoId: parseInt(form.vehiculoId),      // Este SI llega ($3)
     };
 
-    console.log("📤 Enviando Mega-Payload de compatibilidad:", payload);
+    console.log("📤 Enviando Payload Traducido al DTO:", payload);
 
     try {
-      const response = await api.post('/api/ordenes-trabajo', payload); 
-      console.log("✅ ¡POR FIN! El servidor aceptó los datos:", response.data);
-      alert("✅ ¡ORDEN CREADA CON ÉXITO!");
+      const res = await api.post('/api/ordenes-trabajo', payload); 
+      console.log("✅ Respuesta:", res.data);
+      alert("✅ ¡ORDEN CREADA! El problema eran los nombres de los campos.");
       
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) { 
-      console.error("❌ ERROR 500 PERSISTENTE:", err.response?.data);
+      console.error("❌ Error persistente:", err.response?.data);
       
-      // Si el error trae un mensaje de validación, lo mostramos
-      const serverMessage = err.response?.data?.message;
-      const detail = Array.isArray(serverMessage) ? serverMessage.join(", ") : serverMessage;
-      
-      alert(`Sigue fallando. Error: ${detail || "Internal Server Error"}. Revisa los logs de Render ahora mismo.`); 
+      // Si el error de validación dice que falta "description", ya sabemos que es por ahí
+      const msg = err.response?.data?.message;
+      alert(`Error: ${Array.isArray(msg) ? msg.join(", ") : "Revisa la consola para ver qué campo falta"}`); 
     } finally {
       setLoading(false);
     }
