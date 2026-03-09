@@ -85,7 +85,7 @@ const OrdenesTrabajo = () => {
     const data = { ...form, repuestos };
     try {
       // CORRECCIÓN: Se quita /api/
-      await api.post('/ordenes-trabajo', data);
+      await api.post('/api/ordenes-trabajo', data);
       alert("✅ Orden de Trabajo registrada con éxito");
       setForm({ vehiculoId: '', falla: '', tareas: '', kilometraje: '', responsable: '' });
       setRepuestos([{ descripcion: '', cantidad: 1 }]);
