@@ -21,7 +21,7 @@ const Recibos = () => {
   const fetchRecibos = async () => {
     try {
       // CORRECCIÓN: Se quita /api/
-      const res = await api.get('/api/recibos');
+      const res = await api.get('/recibos');
       setRecibos(res.data);
     } catch (err) {
       console.error("Error al cargar recibos", err);

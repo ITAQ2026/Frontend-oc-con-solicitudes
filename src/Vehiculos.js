@@ -12,8 +12,9 @@ const Vehiculos = () => {
 
   const fetchVehiculos = async () => {
     try {
-      // CORRECCIÓN: Se quita /api/
-      const res = await api.get('/api/vehiculos');
+      // CORRECCIÓN FINAL: Solo ponemos '/vehiculos' 
+      // porque el '/api' ya viene de la baseURL en api.js
+      const res = await api.get('/vehiculos'); 
       setVehiculos(res.data);
     } catch (err) { 
       console.error("Error al cargar flota", err); 
