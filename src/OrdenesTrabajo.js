@@ -13,30 +13,28 @@ const OrdenesTrabajo = () => {
     fetchDatos();
   }, []);
 
-  const fetchDatos = async () => {
-    try {
-      const [resOt, resVeh] = await Promise.all([
-        api.get('/ordenes-trabajo'),
-        api.get('/vehiculos')
-      ]);
-      setOrdenes(resOt.data);
-      setVehiculos(resVeh.data);
-    } catch (err) {
-      console.error("Error cargando datos", err);
-    }
-  };
+  // Cargar datos
+const fetchDatos = async () => {
+  try {
+    const [resOt, resVeh] = await Promise.all([
+      api.get('/api/ordenes-trabajo'), // ✅ Agregado /api
+      api.get('/api/vehiculos')        // ✅ Agregado /api
+    ]);
+    setOrdenes(resOt.data);
+    setVehiculos(resVeh.data);
+  } catch (err) { console.error("Error cargando datos", err); }
+};
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/ordenes-trabajo', form);
-      alert("✅ Orden de Trabajo creada con éxito");
-      setForm({ vehiculoId: '', descripcion: '', costo_estimado: '', tipo: 'Preventivo' });
-      fetchDatos();
-    } catch (err) {
-      alert("❌ Error al crear la OT");
-    }
-  };
+  // Crear OT
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api.post('/api/ordenes-trabajo', form); // ✅ Agregado /api
+    alert("✅ Orden de Trabajo creada");
+    setForm({ vehiculoId: '', descripcion: '', costo_estimado: '', tipo: 'Preventivo' });
+    fetchDatos();
+  } catch (err) { alert("❌ Error al crear OT"); }
+};
 
   // --- FUNCIÓN PARA GENERAR EL PDF DE LA OT ---
   const descargarOT = (ot) => {

@@ -10,20 +10,22 @@ const Vehiculos = () => {
     fetchVehiculos();
   }, []);
 
-  // Cargar flota
-const fetchVehiculos = async () => {
-  try {
-    const res = await api.get('/api/vehiculos'); // Agregado /api
-    setVehiculos(res.data);
-  } catch (err) {
-    console.error("Error al cargar flota", err);
-  }
-};
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    await api.post('/api/vehiculos', form); // Agregado /api
-    alert("✅ Vehículo guardado");
+  const fetchVehiculos = async () => {
+    try {
+      // ✅ Agregado /api para que coincida con tu api.js
+      const res = await api.get('/api/vehiculos'); 
+      setVehiculos(res.data);
+    } catch (err) {
+      console.error("Error al cargar flota", err);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // ✅ Agregado /api
+      await api.post('/api/vehiculos', form); 
+      alert("✅ Vehículo guardado");
       setForm({ patente: '', modelo: '', anio: '', vencimiento_vtv: '' });
       fetchVehiculos();
     } catch (err) { 
@@ -109,8 +111,8 @@ const handleSubmit = async (e) => {
                       onClick={async () => { 
                         if(window.confirm(`¿Eliminar vehículo ${v.patente}?`)) { 
                           try {
-                            // CORRECCIÓN: Se quita /api/
-                            await api.delete(`/vehiculos/${v.id}`); 
+                            // ✅ CORREGIDO: También debe llevar /api/
+                            await api.delete(`/api/vehiculos/${v.id}`); 
                             fetchVehiculos(); 
                           } catch(e) { alert("Error al eliminar"); }
                         } 
@@ -130,35 +132,15 @@ const handleSubmit = async (e) => {
   );
 };
 
+// Los estilos se mantienen igual...
 const styles = {
   container: { padding: '40px 20px', backgroundColor: '#f8fafc', minHeight: '100vh' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '900px', margin: '0 auto', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' },
   header: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px', color: '#1e293b' },
-  formGrid: { 
-    display: 'grid', 
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-    gap: '15px', 
-    marginBottom: '40px',
-    background: '#f1f5f9',
-    padding: '20px',
-    borderRadius: '10px'
-  },
+  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '40px', background: '#f1f5f9', padding: '20px', borderRadius: '10px' },
   miniLabel: { display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' },
   input: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' },
-  btnSave: { 
-    height: '40px',
-    marginTop: 'auto',
-    background: '#0f172a', 
-    color: 'white', 
-    border: 'none', 
-    borderRadius: '6px', 
-    cursor: 'pointer', 
-    fontWeight: 'bold',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px'
-  },
+  btnSave: { height: '40px', marginTop: 'auto', background: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' },
   tableWrapper: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
   thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '12px', textTransform: 'uppercase' },

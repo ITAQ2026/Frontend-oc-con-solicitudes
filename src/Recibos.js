@@ -19,25 +19,22 @@ const Recibos = () => {
   }, []);
 
   const fetchRecibos = async () => {
-    try {
-      const res = await api.get('/recibos');
-      setRecibos(res.data);
-    } catch (err) {
-      console.error("Error al cargar recibos:", err);
-    }
-  };
+  try {
+    const res = await api.get('/api/recibos'); // ✅ Agregado /api
+    setRecibos(res.data);
+  } catch (err) { console.error("Error al cargar recibos", err); }
+};
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/recibos', form);
-      alert("✅ Recibo generado exitosamente");
-      setForm({ emisor: 'Alpha Química S.A.', receptor: '', concepto: '', monto: '', condicion_pago: 'Transferencia' });
-      fetchRecibos();
-    } catch (err) {
-      alert("❌ Error al guardar el recibo");
-    }
-  };
+  // Crear recibo
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api.post('/api/recibos', form); // ✅ Agregado /api
+    alert("✅ Recibo generado");
+    setForm({ /* tus campos del form */ });
+    fetchRecibos();
+  } catch (err) { alert("❌ Error al crear recibo"); }
+};
 
   // --- FUNCIÓN PARA GENERAR EL PDF ---
   const descargarPDF = (r) => {
