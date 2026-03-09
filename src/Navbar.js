@@ -8,28 +8,21 @@ import {
   Wrench,
   Receipt,
   CreditCard,
-  Users
+  Users,
+  Shield
 } from 'lucide-react';
 
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
 
-  // 1. Normalizamos los datos (quitamos espacios y pasamos a minúsculas)
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
   
-  // 2. Definimos permisos
   const isAdmin = userRole === 'admin';
-  
-  // IMPORTANTE: He puesto las dos variantes por si acaso, 
-  // pero la principal es alphaquimicasrl.com.ar
   const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
-                   userEmail === 'm.moreno@alphaquimica.com.ar';
+                   userEmail === 'm.moreno@alphaquica.com.ar';
 
   const isLogistics = isMoreno || isAdmin;
-
-  // LOG PARA DEPURACIÓN (Míralo en F12 si sigue fallando)
-  console.log("Navbar Debug - Email:", userEmail, "isLogistics:", isLogistics);
 
   const handleLogoutClick = () => {
     onLogout();
@@ -39,45 +32,48 @@ const Navbar = ({ user, onLogout }) => {
   return (
     <nav style={styles.nav}>
       <div style={styles.leftSection}>
-        <Link to="/" style={styles.logo}>🛡️ Alpha Química</Link>
+        <Link to="/" style={styles.logo}>
+          <Shield size={20} color="#0ea5e9" />
+          <span style={styles.logoText}>Alpha Química</span>
+        </Link>
         
         <div style={styles.links}>
           {/* SECCIÓN COMÚN */}
           <Link to="/solicitudes" style={styles.link}>
-            <FileText size={16} /> Solicitudes
+            <FileText size={16} /> <span style={styles.linkText}>Solicitudes</span>
           </Link>
 
-          {/* SECCIÓN LOGÍSTICA: Moreno o Admin */}
+          {/* SECCIÓN LOGÍSTICA */}
           {isLogistics && (
             <>
               <div style={styles.divider} />
               <Link to="/vehiculos" style={styles.link}>
-                <Truck size={16} /> Vehículos
+                <Truck size={16} /> <span style={styles.linkText}>Vehículos</span>
               </Link>
               <Link to="/ordenes-trabajo" style={styles.link}>
-                <Wrench size={16} /> O. Trabajo
+                <Wrench size={16} /> <span style={styles.linkText}>O. Trabajo</span>
               </Link>
             </>
           )}
 
-          {/* SECCIÓN ADMINISTRACIÓN: Solo Admin */}
+          {/* SECCIÓN ADMINISTRACIÓN */}
           {isAdmin && (
             <>
               <div style={styles.divider} />
               <Link to="/proveedores" style={styles.link}>
-                <Truck size={16} /> Proveedores
+                <Truck size={16} /> <span style={styles.linkText}>Proveedores</span>
               </Link>
               <Link to="/compras" style={styles.link}>
-                <ShoppingCart size={16} /> Compras
+                <ShoppingCart size={16} /> <span style={styles.linkText}>Compras</span>
               </Link>
               <Link to="/recibos" style={styles.link}>
-                <Receipt size={16} /> Recibos
+                <Receipt size={16} /> <span style={styles.linkText}>Recibos</span>
               </Link>
               <Link to="/pagos" style={styles.link}>
-                <CreditCard size={16} /> Pagos
+                <CreditCard size={16} /> <span style={styles.linkText}>Pagos</span>
               </Link>
               <Link to="/usuarios" style={styles.link}>
-                <Users size={16} /> Usuarios
+                <Users size={16} /> <span style={styles.linkText}>Usuarios</span>
               </Link>
             </>
           )}
@@ -92,7 +88,7 @@ const Navbar = ({ user, onLogout }) => {
           </span>
         </div>
         <button onClick={handleLogoutClick} style={styles.logoutBtn}>
-          <LogOut size={16} /> Salir
+          <LogOut size={16} /> <span style={styles.logoutText}>Salir</span>
         </button>
       </div>
     </nav>
@@ -103,32 +99,95 @@ const styles = {
   nav: { 
     display: 'flex', 
     justifyContent: 'space-between', 
-    padding: '0 30px', 
+    padding: '10px 15px', 
     background: '#1e293b', 
     alignItems: 'center',
-    height: '60px',
+    minHeight: '60px', // Cambiado de height fija a minHeight
+    flexWrap: 'wrap', // ✅ Permite que los elementos bajen en celular
     color: 'white',
     position: 'sticky',
     top: 0,
-    zIndex: 1000
+    zIndex: 1000,
+    gap: '10px'
   },
-  leftSection: { display: 'flex', alignItems: 'center', gap: '30px' },
-  logo: { color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '18px' },
-  links: { display: 'flex', alignItems: 'center', gap: '12px' },
+  leftSection: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '20px',
+    flexWrap: 'wrap' // ✅ Clave para móvil
+  },
+  logo: { 
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: 'white', 
+    textDecoration: 'none', 
+    fontWeight: 'bold', 
+    fontSize: '18px' 
+  },
+  logoText: {
+    whiteSpace: 'nowrap'
+  },
+  links: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '8px',
+    flexWrap: 'wrap' // ✅ Los enlaces bajan si no hay espacio
+  },
   link: { 
     color: '#cbd5e1', 
     textDecoration: 'none', 
     fontSize: '13px',
     display: 'flex',
-    alignItems: 'center', gap: '6px',
-    padding: '5px 8px', borderRadius: '4px'
+    alignItems: 'center', 
+    gap: '6px',
+    padding: '8px 10px', // Más relleno para dedos en móvil
+    borderRadius: '6px',
+    background: 'rgba(255,255,255,0.05)', // Un fondo leve para ver dónde tocar
+    whiteSpace: 'nowrap'
   },
-  divider: { width: '1px', height: '24px', background: '#334155', margin: '0 5px' },
-  userSection: { display: 'flex', alignItems: 'center', gap: '20px', borderLeft: '1px solid #334155', paddingLeft: '20px' },
-  userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
-  userName: { fontSize: '13px', fontWeight: '500' },
+  linkText: {
+    // Opcional: podrías ocultar el texto en pantallas muy pequeñas usando media queries
+  },
+  divider: { 
+    width: '1px', 
+    height: '24px', 
+    background: '#334155', 
+    margin: '0 2px',
+    // En móvil el divisor vertical a veces estorba, pero aquí ayuda a separar grupos
+  },
+  userSection: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '15px', 
+    borderLeft: '1px solid #334155', 
+    paddingLeft: '15px',
+    marginLeft: 'auto' // Empuja la info del usuario a la derecha
+  },
+  userInfo: { 
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'flex-end',
+    // En pantallas muy chicas se puede ocultar
+  },
+  userName: { fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap' },
   roleTag: { fontSize: '9px', color: 'white', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', marginTop: '2px' },
-  logoutBtn: { background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }
+  logoutBtn: { 
+    background: '#ef4444', 
+    color: 'white', 
+    border: 'none', 
+    padding: '8px 12px', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '6px', 
+    fontSize: '13px',
+    fontWeight: 'bold'
+  },
+  logoutText: {
+    display: 'inline' // Se puede cambiar a 'none' en móvil muy pequeño
+  }
 };
 
 export default Navbar;
