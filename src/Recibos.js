@@ -77,7 +77,7 @@ const Recibos = () => {
     
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Número: #REC-00${r.id}`, 20, 62);
+    doc.text(`Número: R-00${r.id}`, 20, 62);
     doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString()}`, 150, 62);
 
     // Tabla de Contenido con autoTable
