@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Wrench, Plus, ClipboardList, Download } from 'lucide-react';
+import { Wrench, Plus, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 const OrdenesTrabajo = () => {
   const [ordenes, setOrdenes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
-  
-  // Estado inicial con los nombres exactos que pide tu DB
   const [form, setForm] = useState({ 
     vehiculoId: '', 
     descripcion_falla: '', 
@@ -28,90 +26,60 @@ const OrdenesTrabajo = () => {
       ]);
       setOrdenes(resOt.data || []);
       setVehiculos(resVeh.data || []);
-    } catch (err) { 
-      console.error("Error cargando datos", err); 
-    }
+    } catch (err) { console.error("Error cargando datos", err); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🛠️ CONSTRUCCIÓN DE DATA ROBUSTA (Evita el Error 500 por nulos)
+    // 🚨 REVISIÓN TOTAL DEL PAYLOAD
+    // Forzamos manualmente que los nombres coincidan con lo que pide la DB en el log
     const payload = {
-      vehiculoId: parseInt(form.vehiculoId), // Asegura que sea número
-      descripcion_falla: form.descripcion_falla || "Sin descripción", // Evita nulo
+      descripcion_falla: String(form.descripcion_falla).trim(), // <--- ESTO ES LO QUE FALLABA
+      tareas_realizadas: "Pendiente de inicio",
+      repuestos_utilizados: "Ninguno",
+      kilometraje: 0,
+      responsable: "M. Moreno",
       tipo: form.tipo,
       costo_estimado: parseFloat(form.costo_estimado) || 0,
-      
-      // Enviamos valores por defecto para los campos que tu DB exige como NOT NULL
-      tareas_realizadas: "Pendiente",
-      repuestos_utilizados: "Ninguno",
-      responsable: "M. Moreno", // Valor por defecto
-      kilometraje: 0,
+      vehiculoId: parseInt(form.vehiculoId),
       fecha: new Date().toISOString()
     };
 
-    console.log("Enviando a la DB:", payload);
+    console.log("DATOS QUE SALEN DEL FRONTEND:", payload);
 
     try {
+      // ✅ Usamos directamente el objeto 'payload'
       await api.post('/api/ordenes-trabajo', payload); 
       alert("✅ Orden de Trabajo creada con éxito");
-      
-      setForm({ 
-        vehiculoId: '', 
-        descripcion_falla: '', 
-        costo_estimado: '', 
-        tipo: 'Preventivo' 
-      });
+      setForm({ vehiculoId: '', descripcion_falla: '', costo_estimado: '', tipo: 'Preventivo' });
       fetchDatos();
     } catch (err) { 
-      console.error("Detalle del error:", err.response?.data || err);
-      alert("❌ Error 500: La base de datos rechazó la carga. Revisa los logs de Render."); 
+      console.error("ERROR DETALLADO AXIOS:", err.response?.data);
+      alert("❌ Error 500: La base de datos sigue rechazando el campo descripcion_falla."); 
     }
   };
 
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.setTextColor(30, 41, 59);
-    doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
-    doc.setFontSize(14);
-    doc.text("ORDEN DE TRABAJO Y MANTENIMIENTO", 105, 30, { align: 'center' });
-    doc.line(20, 35, 190, 35);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(`OT Número: #OT-00${ot.id}`, 20, 45);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Fecha: ${new Date(ot.fecha_creacion || Date.now()).toLocaleDateString()}`, 150, 45);
-
+    doc.text("ALPHA QUÍMICA S.A. - ORDEN DE TRABAJO", 105, 20, { align: 'center' });
     doc.autoTable({
-      startY: 55,
-      head: [['Información del Vehículo', 'Detalle']],
+      startY: 30,
+      head: [['Campo', 'Detalle']],
       body: [
-        ['Patente', ot.vehiculo?.patente || 'No especificada'],
-        ['Modelo / Marca', ot.vehiculo?.modelo || 'No especificado'],
-        ['Tipo de Servicio', ot.tipo],
-        ['Presupuesto Estimado', `$${Number(ot.costo_estimado || 0).toLocaleString('es-AR')}`],
+        ['Vehículo', ot.vehiculo?.patente || 'N/A'],
+        ['Tipo', ot.tipo],
+        ['Falla Reportada', ot.descripcion_falla || 'No descrita'],
+        ['Costo Est.', `$${ot.costo_estimado}`]
       ],
-      theme: 'grid',
-      headStyles: { fillColor: [51, 65, 85] },
     });
-
-    const currentY = doc.lastAutoTable.finalY + 15;
-    doc.setFont("helvetica", "bold");
-    doc.text("DESCRIPCIÓN TÉCNICA / FALLA REPORTADA:", 20, currentY);
-    doc.setFont("helvetica", "normal");
-    const splitDesc = doc.splitTextToSize(ot.descripcion_falla || 'Sin descripción.', 170);
-    doc.text(splitDesc, 20, currentY + 7);
-
-    doc.save(`OT_${ot.vehiculo?.patente || 'S-P'}_${ot.id}.pdf`);
+    doc.save(`OT_${ot.id}.pdf`);
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={styles.header}><Wrench size={24} /> Mantenimiento de Flota (Moreno)</h2>
+        <h2 style={styles.header}><Wrench size={24} /> Gestión de Órdenes (Logística)</h2>
         
         <form onSubmit={handleSubmit} style={styles.formGrid}>
           <div style={styles.inputGroup}>
@@ -122,7 +90,7 @@ const OrdenesTrabajo = () => {
               onChange={e => setForm({...form, vehiculoId: e.target.value})} 
               required
             >
-              <option value="">Seleccionar Unidad...</option>
+              <option value="">Seleccionar...</option>
               {vehiculos.map(v => (
                 <option key={v.id} value={v.id}>{v.patente} - {v.modelo}</option>
               ))}
@@ -130,7 +98,7 @@ const OrdenesTrabajo = () => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Tipo de Servicio</label>
+            <label style={styles.label}>Tipo</label>
             <select 
               style={styles.input} 
               value={form.tipo} 
@@ -138,16 +106,14 @@ const OrdenesTrabajo = () => {
             >
               <option value="Preventivo">Preventivo</option>
               <option value="Correctivo">Correctivo</option>
-              <option value="Urgente">Urgente</option>
             </select>
           </div>
 
           <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
-            <label style={styles.label}>Costo Estimado ($)</label>
+            <label style={styles.label}>Costo Estimado</label>
             <input 
               style={styles.input} 
               type="number" 
-              placeholder="Ej: 50000" 
               value={form.costo_estimado} 
               onChange={e => setForm({...form, costo_estimado: e.target.value})} 
             />
@@ -157,15 +123,16 @@ const OrdenesTrabajo = () => {
             <label style={styles.label}>Descripción de la Falla</label>
             <textarea 
               style={styles.textarea} 
-              placeholder="Describa el problema..." 
+              placeholder="Ej: El camión pierde aceite..." 
+              required
+              // ✅ Vínculo directo al estado corregido
               value={form.descripcion_falla} 
               onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
-              required 
             />
           </div>
 
           <button type="submit" style={styles.btnSave}>
-            <Plus size={18}/> ABRIR ORDEN DE TRABAJO
+            <Plus size={18}/> CREAR ORDEN
           </button>
         </form>
 
@@ -174,28 +141,18 @@ const OrdenesTrabajo = () => {
             <thead>
               <tr style={styles.thRow}>
                 <th>FECHA</th>
-                <th>VEHÍCULO</th>
+                <th>PATENTE</th>
                 <th>TIPO</th>
-                <th>ESTADO</th>
-                <th style={{ textAlign: 'center' }}>PDF</th>
+                <th>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
               {ordenes.map(ot => (
                 <tr key={ot.id} style={styles.tdRow}>
                   <td style={styles.td}>{new Date(ot.fecha_creacion || ot.fecha).toLocaleDateString()}</td>
-                  <td style={styles.td}><strong>{ot.vehiculo?.patente || 'N/A'}</strong></td>
+                  <td style={styles.td}><strong>{ot.vehiculo?.patente}</strong></td>
                   <td style={styles.td}>{ot.tipo}</td>
                   <td style={styles.td}>
-                    <span style={{
-                      ...styles.badge,
-                      backgroundColor: ot.estado === 'Finalizado' ? '#dcfce7' : '#e0f2fe',
-                      color: ot.estado === 'Finalizado' ? '#166534' : '#0369a1'
-                    }}>
-                      {ot.estado || 'Abierta'}
-                    </span>
-                  </td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>
                     <button onClick={() => descargarOT(ot)} style={styles.btnIcon}>
                       <Download size={16} />
                     </button>
@@ -211,22 +168,21 @@ const OrdenesTrabajo = () => {
 };
 
 const styles = {
-  container: { padding: '30px', backgroundColor: '#f8fafc', minHeight: '100vh' },
-  card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1000px', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
-  header: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px', color: '#0f172a' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '35px', padding: '20px', background: '#f1f5f9', borderRadius: '12px' },
+  container: { padding: '20px', backgroundColor: '#f8fafc', minHeight: '100vh' },
+  card: { background: 'white', borderRadius: '12px', padding: '25px', maxWidth: '900px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' },
+  header: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px', background: '#f1f5f9', padding: '20px', borderRadius: '8px' },
   inputGroup: { display: 'flex', flexDirection: 'column', gap: '5px' },
-  label: { fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' },
-  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
-  textarea: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', minHeight: '80px', fontFamily: 'inherit' },
-  btnSave: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px' },
+  label: { fontSize: '12px', fontWeight: 'bold', color: '#475569' },
+  input: { padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' },
+  textarea: { padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', minHeight: '60px' },
+  btnSave: { gridColumn: 'span 2', background: '#1e293b', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' },
   tableWrapper: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '12px', paddingBottom: '10px' },
+  thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0' },
   tdRow: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '15px 5px', fontSize: '14px', color: '#334155' },
-  badge: { padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' },
-  btnIcon: { background: '#f1f5f9', border: 'none', color: '#475569', cursor: 'pointer', padding: '8px', borderRadius: '6px' }
+  td: { padding: '12px 5px' },
+  btnIcon: { background: '#f1f5f9', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer' }
 };
 
 export default OrdenesTrabajo;
