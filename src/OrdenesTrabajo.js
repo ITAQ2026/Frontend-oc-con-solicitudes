@@ -30,32 +30,26 @@ const OrdenesTrabajo = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🚀 PAYLOAD DEFINITIVO
-    // Forzamos los nombres exactos de la ENTIDAD que me pasaste antes.
+    // 🚀 MAPEO SEGÚN TU SERVICE.TS
     const payload = {
-      descripcion_falla: form.descripcion_falla.trim(),
-      kilometraje: Number(form.kilometraje),
-      responsable: form.responsable.trim(),
-      vehiculoId: Number(form.vehiculoId),
-      
-      // Estos campos son NULLABLE en tu entidad, pero la DB los pide.
-      // Los enviamos vacíos pero NO nulos.
-      tareas_realizadas: "Pendiente",
-      repuestos_utilizados: {}, // Objeto vacío para JSONB
-      fecha: new Date().toISOString()
+      falla: form.descripcion_falla.trim(), // Tu Service busca .falla
+      tareas: "Pendiente",                  // Tu Service busca .tareas
+      kilometraje: Number(form.kilometraje),// Tu Service busca .kilometraje
+      responsable: form.responsable.trim(), // Tu Service busca .responsable
+      repuestos: {},                        // Tu Service busca .repuestos (JSONB)
+      vehiculoId: Number(form.vehiculoId)   // Tu Service busca .vehiculoId
     };
 
-    console.log("📤 Enviando Payload Final:", payload);
+    console.log("📤 Enviando Payload compatible con el Service:", payload);
 
     try {
       const res = await api.post('/api/ordenes-trabajo', payload);
-      console.log("✅ Servidor aceptó:", res.data);
-      alert("✅ ¡ORDEN CREADA EXITOSAMENTE!");
+      alert("✅ ¡ÉXITO! La orden se creó correctamente.");
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) {
-      console.error("❌ Error 500 - Detalles:", err.response?.data);
-      alert("Error 500: El servidor sigue rechazando la descripción. Verificá que no haya espacios extra en el nombre del campo.");
+      console.error("❌ Error persistente:", err.response?.data);
+      alert("Error 500: Revisa la consola.");
     }
   };
 
