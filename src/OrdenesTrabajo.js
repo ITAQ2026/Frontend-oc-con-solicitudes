@@ -33,47 +33,38 @@ const OrdenesTrabajo = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🛠️ ESTRUCTURA REQUERIDA POR NESTJS / TYPEORM
-    // La relación debe enviarse como un objeto 'vehiculo' con su 'id'
+    // 🔬 PRUEBA FINAL: Usamos nombres planos (SNAKE_CASE)
+    // Coincidiendo exactamente con lo que el error de SQL mostró.
     const payload = {
       descripcion_falla: form.descripcion_falla.trim(),
-      kilometraje: Number(form.kilometraje),
+      kilometraje: parseInt(form.kilometraje),
       responsable: form.responsable.trim(),
       tipo: form.tipo,
-      costo_estimado: Number(form.costo_estimado) || 0,
+      costo_estimado: parseFloat(form.costo_estimado) || 0,
       
-      // Relación anidada (Evita el valor DEFAULT en la DB)
-      vehiculo: { id: Number(form.vehiculoId) },
+      // Enviamos el ID directo como "vehiculoId" (como decía el query de Render)
+      vehiculoId: parseInt(form.vehiculoId),
       
-      // Campos obligatorios para evitar errores de restricción NOT NULL
-      tareas_realizadas: "Pendiente de revisión",
-      repuestos_utilizados: "Ninguno",
+      // Forzamos valores para evitar el "DEFAULT" que causa el error 500
+      tareas_realizadas: "PENDIENTE",
+      repuestos_utilizados: "NINGUNO",
       fecha: new Date().toISOString()
     };
 
-    console.log("📤 Enviando Payload a NestJS:", payload);
+    console.log("🚀 Enviando Payload Plano:", payload);
 
     try {
-      await api.post('/api/ordenes-trabajo', payload); 
-      alert("✅ Orden de Trabajo creada con éxito");
-      
-      // Resetear el formulario
-      setForm({ 
-        vehiculoId: '', 
-        descripcion_falla: '', 
-        kilometraje: '', 
-        responsable: '', 
-        tipo: 'Preventivo',
-        costo_estimado: '' 
-      });
+      const response = await api.post('/api/ordenes-trabajo', payload); 
+      console.log("✅ ÉXITO:", response.data);
+      alert("✅ ¡ORDEN CREADA!");
+      setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '', tipo: 'Preventivo', costo_estimado: '' });
       fetchDatos();
     } catch (err) { 
-      console.error("❌ Error 500 del Servidor:", err.response?.data);
-      const errorMsg = err.response?.data?.message;
-      alert(`Error: ${Array.isArray(errorMsg) ? errorMsg.join(", ") : "Fallo en la comunicación con la base de datos"}`); 
+      console.error("❌ Error persistente:", err.response?.data);
+      alert("Error 500: El servidor sigue rechazando los datos. El problema está en el DTO del Backend."); 
     }
   };
 
