@@ -1,225 +1,227 @@
 import React, { useState, useEffect } from 'react';
-import api from './api'; 
-import { Wrench, Plus, Trash2, Save, Download } from 'lucide-react';
+import api from '../api';
+import { Wrench, Plus, ClipboardList, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 const OrdenesTrabajo = () => {
+  const [ordenes, setOrdenes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
-  const [historial, setHistorial] = useState([]); 
-  const [repuestos, setRepuestos] = useState([{ descripcion: '', cantidad: 1 }]);
-  const [form, setForm] = useState({ 
-    vehiculoId: '', 
-    falla: '', 
-    tareas: '', 
-    kilometraje: '', 
-    responsable: '' 
-  });
+  const [form, setForm] = useState({ vehiculoId: '', descripcion: '', costo_estimado: '', tipo: 'Preventivo' });
 
   useEffect(() => {
-    fetchVehiculos();
-    fetchHistorial();
+    fetchDatos();
   }, []);
 
-  const fetchVehiculos = () => {
-    // CORRECCIÓN: Se quita /api/ para usar la ruta directa del backend
-    api.get('/vehiculos')
-      .then(res => setVehiculos(res.data))
-      .catch(err => console.error("Error al cargar vehículos", err));
+  const fetchDatos = async () => {
+    try {
+      const [resOt, resVeh] = await Promise.all([
+        api.get('/ordenes-trabajo'),
+        api.get('/vehiculos')
+      ]);
+      setOrdenes(resOt.data);
+      setVehiculos(resVeh.data);
+    } catch (err) {
+      console.error("Error cargando datos", err);
+    }
   };
 
-  const fetchHistorial = () => {
-    // CORRECCIÓN: Se quita /api/
-    api.get('/ordenes-trabajo')
-      .then(res => setHistorial(res.data))
-      .catch(err => console.error("Error al cargar historial", err));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/ordenes-trabajo', form);
+      alert("✅ Orden de Trabajo creada con éxito");
+      setForm({ vehiculoId: '', descripcion: '', costo_estimado: '', tipo: 'Preventivo' });
+      fetchDatos();
+    } catch (err) {
+      alert("❌ Error al crear la OT");
+    }
   };
 
-  const agregarRepuesto = () => setRepuestos([...repuestos, { descripcion: '', cantidad: 1 }]);
-
+  // --- FUNCIÓN PARA GENERAR EL PDF DE LA OT ---
   const descargarOT = (ot) => {
-    const doc = jsPDF();
+    const doc = new jsPDF();
+
+    // Encabezado Pro
+    doc.setFontSize(18);
+    doc.setTextColor(30, 41, 59);
+    doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
     
-    doc.setFillColor(15, 23, 42); 
-    doc.rect(0, 0, 210, 35, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.text("ALPHA QUÍMICA - ORDEN DE TRABAJO", 105, 18, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`NRO ORDEN: #${String(ot.id).padStart(5, '0')}`, 105, 28, { align: 'center' });
+    doc.setFontSize(14);
+    doc.text("ORDEN DE TRABAJO Y MANTENIMIENTO", 105, 30, { align: 'center' });
+    
+    doc.setDrawColor(200);
+    doc.line(20, 35, 190, 35);
 
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
+    // Información de la OT
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL VEHÍCULO", 20, 50);
+    doc.text(`OT Número: #OT-00${ot.id}`, 20, 45);
     doc.setFont("helvetica", "normal");
-    doc.text(`Patente: ${ot.vehiculo?.patente || 'N/A'}`, 20, 60);
-    doc.text(`Modelo: ${ot.vehiculo?.modelo || 'N/A'}`, 20, 65);
-    doc.text(`Kilometraje: ${Number(ot.kilometraje).toLocaleString()} KM`, 120, 60);
-    doc.text(`Fecha: ${new Date(ot.fecha).toLocaleDateString()}`, 120, 65);
+    doc.text(`Fecha: ${new Date(ot.fecha_creacion).toLocaleDateString()}`, 150, 45);
+    doc.text(`Estado: ${ot.estado || 'Abierta'}`, 20, 50);
 
-    doc.line(20, 70, 190, 70);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("FALLA REPORTADA / TRABAJOS:", 20, 80);
-    doc.setFont("helvetica", "normal");
-    doc.text(ot.falla || "Sin descripción", 20, 88, { maxWidth: 170 });
-
+    // Datos del Vehículo en Tabla
     doc.autoTable({
-      startY: 110,
-      head: [['Descripción del Repuesto / Insumo', 'Cantidad']],
-      body: ot.repuestos ? ot.repuestos.map(r => [r.descripcion, r.cantidad]) : [],
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42] }
+      startY: 55,
+      head: [['Información del Vehículo', 'Detalle']],
+      body: [
+        ['Patente', ot.vehiculo?.patente || 'No especificada'],
+        ['Modelo / Marca', ot.vehiculo?.modelo || 'No especificado'],
+        ['Tipo de Servicio', ot.tipo],
+        ['Presupuesto Estimado', `$${Number(ot.costo_estimado).toLocaleString('es-AR')}`],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [51, 65, 85] }, // Slate-700
     });
 
-    const finalY = doc.lastAutoTable.finalY + 30;
-    doc.line(130, finalY, 180, finalY);
-    doc.text("Firma Responsable Taller", 130, finalY + 5);
+    // Descripción del Trabajo
+    const currentY = doc.lastAutoTable.finalY + 15;
+    doc.setFont("helvetica", "bold");
+    doc.text("DESCRIPCIÓN TÉCNICA / FALLA REPORTADA:", 20, currentY);
+    
+    doc.setFont("helvetica", "normal");
+    const splitDesc = doc.splitTextToSize(ot.descripcion || 'Sin descripción detallada.', 170);
+    doc.text(splitDesc, 20, currentY + 7);
 
-    doc.save(`OT_Alpha_${ot.id}.pdf`);
-  };
+    // Espacio para Observaciones del Taller
+    const obsY = currentY + 40;
+    doc.setDrawColor(220);
+    doc.rect(20, obsY, 170, 30);
+    doc.setFontSize(8);
+    doc.text("OBSERVACIONES DEL MECÁNICO / TALLER:", 22, obsY + 5);
 
-  const guardarOT = async (e) => {
-    e.preventDefault();
-    const data = { ...form, repuestos };
-    try {
-      // CORRECCIÓN: Se quita /api/
-      await api.post('/ordenes-trabajo', data);
-      alert("✅ Orden de Trabajo registrada con éxito");
-      setForm({ vehiculoId: '', falla: '', tareas: '', kilometraje: '', responsable: '' });
-      setRepuestos([{ descripcion: '', cantidad: 1 }]);
-      fetchHistorial(); 
-    } catch (err) { 
-      alert("❌ Error al guardar la orden."); 
-    }
+    // Pie de página
+    doc.setFontSize(10);
+    doc.text("Firma Responsable Logística", 105, 260, { align: 'center' });
+    doc.line(70, 258, 140, 258);
+
+    doc.save(`OT_${ot.vehiculo?.patente || 'S-P'}_${ot.id}.pdf`);
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={styles.header}><Wrench size={24} /> Nueva Orden de Trabajo</h2>
-        <form onSubmit={guardarOT}>
-          <div style={styles.grid}>
-            <div>
-              <label style={styles.label}>Vehículo</label>
-              <select 
-                style={styles.input} 
-                required 
-                value={form.vehiculoId} 
-                onChange={e => setForm({...form, vehiculoId: e.target.value})}
-              >
-                <option value="">Seleccionar...</option>
-                {vehiculos.map(v => (
-                  <option key={v.id} value={v.id}>{v.patente} - {v.modelo}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={styles.label}>Kilometraje Actual</label>
-              <input 
-                style={styles.input} 
-                type="number" 
-                placeholder="Ej: 150000" 
-                value={form.kilometraje}
-                onChange={e => setForm({...form, kilometraje: e.target.value})} 
-              />
-            </div>
+        <h2 style={styles.header}><Wrench size={24} /> Mantenimiento de Flota (Moreno)</h2>
+        
+        <form onSubmit={handleSubmit} style={styles.formGrid}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Vehículo</label>
+            <select 
+              style={styles.input} 
+              value={form.vehiculoId} 
+              onChange={e => setForm({...form, vehiculoId: e.target.value})} 
+              required
+            >
+              <option value="">Seleccionar Unidad...</option>
+              {vehiculos.map(v => (
+                <option key={v.id} value={v.id}>{v.patente} - {v.modelo}</option>
+              ))}
+            </select>
           </div>
 
-          <label style={styles.label}>Falla Reportada / Diagnóstico</label>
-          <textarea 
-            style={styles.textarea} 
-            placeholder="Describa el problema..." 
-            value={form.falla}
-            onChange={e => setForm({...form, falla: e.target.value})} 
-          />
-
-          <div style={styles.sectionRepuestos}>
-            <label style={styles.label}>Repuestos / Insumos Utilizados</label>
-            {repuestos.map((r, i) => (
-              <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                <input 
-                  style={{ ...styles.input, flex: 3 }} 
-                  placeholder="Descripción" 
-                  value={r.descripcion} 
-                  onChange={e => { 
-                    const n = [...repuestos]; n[i].descripcion = e.target.value; setRepuestos(n); 
-                  }} 
-                />
-                <input 
-                  style={{ ...styles.input, flex: 1 }} 
-                  type="number" 
-                  value={r.cantidad} 
-                  onChange={e => { 
-                    const n = [...repuestos]; n[i].cantidad = e.target.value; setRepuestos(n); 
-                  }} 
-                />
-                <button type="button" onClick={() => setRepuestos(repuestos.filter((_, idx) => idx !== i))} style={styles.btnDel}>
-                  <Trash2 size={16}/>
-                </button>
-              </div>
-            ))}
-            <button type="button" onClick={agregarRepuesto} style={styles.btnAdd}>
-              <Plus size={14}/> Agregar Repuesto
-            </button>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Tipo de Servicio</label>
+            <select 
+              style={styles.input} 
+              value={form.tipo} 
+              onChange={e => setForm({...form, tipo: e.target.value})}
+            >
+              <option value="Preventivo">Preventivo</option>
+              <option value="Correctivo">Correctivo</option>
+              <option value="Urgente">Urgente</option>
+            </select>
           </div>
 
-          <button type="submit" style={styles.btnSubmit}><Save size={20}/> GUARDAR ORDEN</button>
+          <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
+            <label style={styles.label}>Costo Estimado ($)</label>
+            <input 
+              style={styles.input} 
+              type="number" 
+              placeholder="Ej: 50000" 
+              value={form.costo_estimado} 
+              onChange={e => setForm({...form, costo_estimado: e.target.value})} 
+            />
+          </div>
+
+          <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
+            <label style={styles.label}>Descripción del Trabajo</label>
+            <textarea 
+              style={styles.textarea} 
+              placeholder="Describa el problema o el mantenimiento a realizar..." 
+              value={form.descripcion} 
+              onChange={e => setForm({...form, descripcion: e.target.value})} 
+              required 
+            />
+          </div>
+
+          <button type="submit" style={styles.btnSave}>
+            <Plus size={18}/> ABRIR ORDEN DE TRABAJO
+          </button>
         </form>
-      </div>
 
-      <div style={{...styles.card, marginTop: '30px'}}>
-        <h3 style={styles.header}>Historial de Mantenimiento</h3>
-        <table style={styles.table}>
-          <thead>
-            <tr style={styles.thRow}>
-              <th>ORDEN</th>
-              <th>FECHA</th>
-              <th>VEHÍCULO</th>
-              <th>KILOMETRAJE</th>
-              <th style={{textAlign: 'center'}}>PDF</th>
-            </tr>
-          </thead>
-          <tbody>
-            {historial.map(ot => (
-              <tr key={ot.id} style={styles.tr}>
-                <td style={styles.td}>#{String(ot.id).padStart(4, '0')}</td>
-                <td style={styles.td}>{new Date(ot.fecha).toLocaleDateString()}</td>
-                <td style={styles.td}>{ot.vehiculo?.patente}</td>
-                <td style={styles.td}>{Number(ot.kilometraje).toLocaleString()}</td>
-                <td style={{...styles.td, textAlign: 'center'}}>
-                  <Download 
-                    size={20} 
-                    style={{cursor: 'pointer', color: '#0ea5e9'}} 
-                    onClick={() => descargarOT(ot)}
-                  />
-                </td>
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <thead>
+              <tr style={styles.thRow}>
+                <th>FECHA</th>
+                <th>VEHÍCULO</th>
+                <th>TIPO</th>
+                <th>ESTADO</th>
+                <th style={{ textAlign: 'center' }}>PDF</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ordenes.map(ot => (
+                <tr key={ot.id} style={styles.tdRow}>
+                  <td style={styles.td}>{new Date(ot.fecha_creacion).toLocaleDateString()}</td>
+                  <td style={styles.td}><strong>{ot.vehiculo?.patente || 'N/A'}</strong></td>
+                  <td style={styles.td}>{ot.tipo}</td>
+                  <td style={styles.td}>
+                    <span style={{
+                      ...styles.badge,
+                      backgroundColor: ot.estado === 'Finalizado' ? '#dcfce7' : '#e0f2fe',
+                      color: ot.estado === 'Finalizado' ? '#166534' : '#0369a1'
+                    }}>
+                      {ot.estado || 'Abierta'}
+                    </span>
+                  </td>
+                  <td style={{ ...styles.td, textAlign: 'center' }}>
+                    <button 
+                      onClick={() => descargarOT(ot)} 
+                      style={styles.btnIcon}
+                      title="Descargar Orden"
+                    >
+                      <Download size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: { padding: '40px 20px', backgroundColor: '#f8fafc', minHeight: '100vh' },
-  card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '850px', margin: '0 auto', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' },
-  header: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px', color: '#1e293b' },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' },
-  label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px', textTransform: 'uppercase' },
-  input: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
-  textarea: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', height: '80px', marginBottom: '20px', fontSize: '14px' },
-  sectionRepuestos: { background: '#f1f5f9', padding: '15px', borderRadius: '10px', marginBottom: '20px' },
-  btnAdd: { background: 'white', border: '1px dashed #64748b', width: '100%', padding: '10px', borderRadius: '8px', cursor: 'pointer', color: '#64748b', fontWeight: '500' },
-  btnSubmit: { width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' },
-  btnDel: { background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '8px', padding: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center' },
+  container: { padding: '30px', backgroundColor: '#f8fafc', minHeight: '100vh' },
+  card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1000px', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
+  header: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px', color: '#0f172a' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '35px', padding: '20px', background: '#f1f5f9', borderRadius: '12px' },
+  inputGroup: { display: 'flex', flexDirection: 'column', gap: '5px' },
+  label: { fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' },
+  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  textarea: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', minHeight: '80px', fontFamily: 'inherit' },
+  btnSave: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px' },
+  tableWrapper: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '12px', textTransform: 'uppercase' },
-  tr: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '12px 5px', fontSize: '14px', color: '#334155' }
+  thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '12px', paddingBottom: '10px' },
+  tdRow: { borderBottom: '1px solid #f1f5f9' },
+  td: { padding: '15px 5px', fontSize: '14px', color: '#334155' },
+  badge: { padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' },
+  btnIcon: { background: '#f1f5f9', border: 'none', color: '#475569', cursor: 'pointer', padding: '8px', borderRadius: '6px', transition: 'all 0.2s' }
 };
 
 export default OrdenesTrabajo;
