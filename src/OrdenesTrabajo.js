@@ -34,62 +34,54 @@ const OrdenesTrabajo = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🚀 PAYLOAD UNIVERSAL: Enviamos todas las variantes posibles
-    // para que el Backend encuentre la que necesita.
+    // 🛠️ CAMBIO CLAVE: Estructura de relación de TypeORM
+    // Muchos Backend de NestJS no aceptan "vehiculoId", 
+    // sino un objeto "vehiculo" con el ID dentro.
     const payload = {
-      // Variantes de Descripción
+      // 1. La descripción (intentamos ambos nombres otra vez)
       descripcion_falla: form.descripcion_falla,
       descripcion: form.descripcion_falla,
-      description: form.descripcion_falla,
 
-      // Variantes de Tareas
-      tareas_realizadas: "Pendiente",
-      tareas: "Pendiente",
-      tasks: "Pendiente",
-
-      // Variantes de Repuestos
-      repuestos_utilizados: "Ninguno",
-      repuestos: "Ninguno",
-      parts: "Ninguno",
-
-      // Datos Numéricos y Relaciones
-      vehiculoId: Number(form.vehiculoId),
-      vehiculo: { id: Number(form.vehiculoId) }, // Por si espera el objeto
-      kilometraje: Number(form.kilometraje),
-      mileage: Number(form.kilometraje),
+      // 2. La Relación (Esto suele ser el motivo del Error 500)
+      vehiculo: { id: parseInt(form.vehiculoId) }, 
       
-      // Otros
+      // 3. Campos obligatorios segun log de Render
+      kilometraje: parseInt(form.kilometraje),
       responsable: form.responsable,
       tipo: form.tipo,
-      costo_estimado: Number(form.costo_estimado) || 0,
+      costo_estimado: parseFloat(form.costo_estimado) || 0,
+      
+      // 4. Valores por defecto para evitar el "DEFAULT" de PostgreSQL
+      tareas_realizadas: "Pendiente",
+      repuestos_utilizados: "Ninguno",
       fecha: new Date().toISOString()
     };
 
-    console.log("Intentando envío con Payload Universal:", payload);
+    console.log("Enviando Payload Estructurado:", payload);
 
     try {
       await api.post('/api/ordenes-trabajo', payload); 
-      alert("✅ ¡ÉXITO! La orden se creó correctamente.");
+      alert("✅ ¡ORDEN CREADA EXITOSAMENTE!");
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '', costo_estimado: '', tipo: 'Preventivo' });
       fetchDatos();
     } catch (err) { 
-      console.error("Error del servidor:", err.response?.data);
-      alert(`Error 500: El servidor sigue sin reconocer los campos. Revisa el DTO en el Backend.`); 
+      console.error("Respuesta fallida del servidor:", err.response?.data);
+      alert(`Error 500: Revisa si el nombre en el Backend es 'descripcion' o 'descripcion_falla'`); 
     }
   };
 
+  // --- El resto del componente (descargarOT y return) se mantiene igual que la versión anterior ---
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("ALPHA QUÍMICA S.A. - OT", 105, 20, { align: 'center' });
+    doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
     doc.autoTable({
       startY: 30,
       head: [['Campo', 'Valor']],
       body: [
-        ['Vehículo', ot.vehiculo?.patente || 'S/P'],
+        ['Vehículo', ot.vehiculo?.patente || 'N/A'],
         ['Responsable', ot.responsable],
-        ['Kilometraje', ot.kilometraje],
-        ['Falla', ot.descripcion_falla || ot.descripcion || 'Ver descripción'],
+        ['KM', ot.kilometraje],
+        ['Falla', ot.descripcion_falla || ot.descripcion],
       ],
     });
     doc.save(`OT_${ot.id}.pdf`);
