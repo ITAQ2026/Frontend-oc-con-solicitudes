@@ -8,7 +8,7 @@ import {
 const Navbar = ({ user, onLogout }) => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024); // Umbral para tablets/celulares
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   useEffect(() => {
     const handleResize = () => {
@@ -32,6 +32,37 @@ const Navbar = ({ user, onLogout }) => {
 
   const closeMenu = () => setIsMenuOpen(false);
 
+  // --- LÓGICA DE ESTILOS DINÁMICOS ---
+  const menuStyles = isMobile 
+    ? {
+        // Estilos para Celular
+        position: 'absolute',
+        top: '65px',
+        left: 0,
+        width: '100%',
+        backgroundColor: '#1e293b',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        transition: 'all 0.4s ease-in-out',
+        maxHeight: isMenuOpen ? '800px' : '0px',
+        opacity: isMenuOpen ? 1 : 0,
+        padding: isMenuOpen ? '20px' : '0 20px',
+        boxShadow: '0 10px 15px rgba(0,0,0,0.3)',
+        pointerEvents: isMenuOpen ? 'auto' : 'none',
+        zIndex: 999
+      }
+    : {
+        // Estilos para PC
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flex: 1,
+        maxHeight: 'none',
+        opacity: 1,
+        pointerEvents: 'auto'
+      };
+
   return (
     <nav style={styles.nav}>
       <div style={styles.topBar}>
@@ -47,12 +78,7 @@ const Navbar = ({ user, onLogout }) => {
         )}
       </div>
 
-      {/* Menú Desplegable con Animación */}
-      <div style={{
-        ...styles.linksContainer,
-        ...(isMobile ? (isMenuOpen ? styles.menuOpen : styles.menuClosed) : styles.desktopMenu)
-      }}>
-        
+      <div style={menuStyles}>
         <div style={isMobile ? styles.mobileStack : styles.desktopStack}>
           <Link to="/solicitudes" style={styles.link} onClick={closeMenu}>
             <FileText size={18} /> Solicitudes
@@ -92,7 +118,12 @@ const Navbar = ({ user, onLogout }) => {
           )}
         </div>
 
-        <div style={{...styles.userSection, borderTop: isMobile ? '1px solid #334155' : 'none', paddingTop: isMobile ? '15px' : '0'}}>
+        <div style={{
+          ...styles.userSection, 
+          borderTop: isMobile ? '1px solid #334155' : 'none', 
+          marginTop: isMobile ? '15px' : '0',
+          paddingTop: isMobile ? '15px' : '0'
+        }}>
           <div style={styles.userInfo}>
             <span style={styles.userName}>{user?.nombre || 'Usuario'}</span>
             <span style={{...styles.roleTag, background: isAdmin ? '#0ea5e9' : '#64748b'}}>
@@ -115,81 +146,45 @@ const styles = {
     position: 'sticky', 
     top: 0, 
     zIndex: 1000,
-    boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
+    display: 'flex',
+    flexDirection: 'row', // En PC es horizontal
+    alignItems: 'center',
+    height: '65px',
+    padding: '0 20px'
   },
   topBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: '65px',
-    padding: '0 20px',
-    position: 'relative',
-    zIndex: 1001,
-    background: '#1e293b',
+    marginRight: '20px' // Espacio entre logo y links en PC
   },
   logo: { 
     display: 'flex', alignItems: 'center', gap: '10px', 
     color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '20px' 
   },
+  logoText: { whiteSpace: 'nowrap' },
   menuBtn: {
     background: '#334155', border: 'none', color: 'white', cursor: 'pointer', 
-    padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center'
+    padding: '8px', borderRadius: '8px', marginLeft: '10px'
   },
-  linksContainer: {
-    display: 'flex',
-    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', // Animación fluida
-    overflow: 'hidden',
-  },
-  // Estados de animación para móvil
-  menuClosed: {
-    maxHeight: '0px',
-    opacity: 0,
-    flexDirection: 'column',
-    padding: '0 20px',
-    pointerEvents: 'none',
-  },
-  menuOpen: {
-    maxHeight: '600px', // Suficiente para todos los links
-    opacity: 1,
-    flexDirection: 'column',
-    padding: '10px 20px 30px 20px',
-    backgroundColor: '#1e293b',
-  },
-  // Estado para desktop
-  desktopMenu: {
-    maxHeight: 'none',
-    opacity: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-    padding: '0 20px 0 0',
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    height: '65px',
-    pointerEvents: 'auto',
-  },
-  desktopStack: { display: 'flex', alignItems: 'center', gap: '5px', marginLeft: '220px' },
+  desktopStack: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' },
   mobileStack: { display: 'flex', flexDirection: 'column', gap: '5px' },
   link: { 
-    color: '#cbd5e1', textDecoration: 'none', fontSize: '14px',
-    display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '12px 15px', borderRadius: '8px',
-    transition: 'all 0.2s',
+    color: '#cbd5e1', textDecoration: 'none', fontSize: '13px',
+    display: 'flex', alignItems: 'center', gap: '8px',
+    padding: '8px 12px', borderRadius: '8px', whiteSpace: 'nowrap'
   },
-  divider: { width: '1px', height: '24px', background: '#334155', margin: '0 8px' },
+  divider: { width: '1px', height: '20px', background: '#334155', margin: '0 5px' },
   userSection: { 
-    display: 'flex', alignItems: 'center', gap: '15px'
+    display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto'
   },
   userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
-  userName: { fontSize: '14px', fontWeight: 'bold', color: '#f8fafc' },
-  roleTag: { fontSize: '10px', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold' },
+  userName: { fontSize: '12px', fontWeight: 'bold' },
+  roleTag: { fontSize: '9px', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' },
   logoutBtn: { 
     background: '#ef4444', color: 'white', border: 'none', 
-    padding: '10px 18px', borderRadius: '10px', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold',
-    boxShadow: '0 4px 6px rgba(239, 68, 68, 0.2)'
+    padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold'
   }
 };
 
