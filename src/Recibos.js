@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Receipt, Plus, Download, FileText } from 'lucide-react';
+import { Receipt, Plus, Download, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable'; // ✅ Importación correcta
 
 const Recibos = () => {
   const [recibos, setRecibos] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ 
     emisor: 'Alpha Química S.A.', 
     receptor: '', 
@@ -19,70 +20,103 @@ const Recibos = () => {
   }, []);
 
   const fetchRecibos = async () => {
-  try {
-    const res = await api.get('/api/recibos'); // ✅ Agregado /api
-    setRecibos(res.data);
-  } catch (err) { console.error("Error al cargar recibos", err); }
-};
+    try {
+      const res = await api.get('/api/recibos');
+      setRecibos(res.data);
+    } catch (err) { console.error("Error al cargar recibos", err); }
+  };
 
-  // Crear recibo
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    await api.post('/api/recibos', form); // ✅ Agregado /api
-    alert("✅ Recibo generado");
-    setForm({ /* tus campos del form */ });
-    fetchRecibos();
-  } catch (err) { alert("❌ Error al crear recibo"); }
-};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post('/api/recibos', form);
+      alert("✅ Recibo generado con éxito");
+      // Limpiar formulario manteniendo el emisor
+      setForm({ 
+        emisor: 'Alpha Química S.A.', 
+        receptor: '', 
+        concepto: '', 
+        monto: '', 
+        condicion_pago: 'Transferencia' 
+      });
+      fetchRecibos();
+    } catch (err) { 
+      alert("❌ Error al crear recibo"); 
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- FUNCIÓN PARA GENERAR EL PDF ---
   const descargarPDF = (r) => {
     const doc = new jsPDF();
     
-    // Encabezado
-    doc.setFontSize(20);
-    doc.setTextColor(30, 41, 59); // Slate-800
+    // Configuración de colores (Slate-900)
+    const primaryColor = [15, 23, 42];
+
+    // Banner Superior
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 210, 40, 'F');
+
+    // Texto del Banner
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
     doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
     
     doc.setFontSize(10);
-    doc.text("Soluciones Químicas Industriales", 105, 27, { align: 'center' });
-    
-    doc.setDrawColor(200);
-    doc.line(20, 35, 190, 35);
-
-    // Título del documento
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("RECIBO DE PAGO", 20, 45);
-    
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Número: #REC-00${r.id}`, 20, 52);
-    doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString()}`, 150, 52);
+    doc.text("Soluciones Químicas Industriales | Comprobante Oficial", 105, 28, { align: 'center' });
 
-    // Tabla de contenido
-    doc.autoTable({
-      startY: 60,
+    // Información del Recibo
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("RECIBO DE PAGO", 20, 55);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Número: #REC-00${r.id}`, 20, 62);
+    doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString()}`, 150, 62);
+
+    // Tabla de Contenido con autoTable
+    autoTable(doc, {
+      startY: 70,
       head: [['Descripción', 'Detalle']],
       body: [
         ['Pagador / Emisor', r.emisor],
         ['Beneficiario', r.receptor],
         ['Concepto', r.concepto],
         ['Método de Pago', r.condicion_pago],
-        ['Monto Total', `$${Number(r.monto).toLocaleString('es-AR')}`],
+        ['Monto Total', `$ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
       ],
-      headStyles: { fillColor: [30, 41, 59] },
-      styles: { cellPadding: 5 }
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor, fontSize: 11 },
+      styles: { cellPadding: 6, fontSize: 10 },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
     });
 
-    // Pie de página con firmas
-    const finalY = doc.lastAutoTable.finalY + 40;
-    doc.line(30, finalY, 80, finalY);
-    doc.text("Firma Entregué", 45, finalY + 5);
+    // Cuadro de Monto en Letras o Detalle Extra (Opcional)
+    const finalY = doc.lastAutoTable.finalY + 20;
+    doc.setDrawColor(200);
+    doc.rect(20, finalY, 170, 15);
+    doc.setFont("helvetica", "bold");
+    doc.text(`TOTAL RECIBIDO: $ ${Number(r.monto).toLocaleString('es-AR')}`, 105, finalY + 10, { align: 'center' });
+
+    // Firmas
+    const firmaY = finalY + 45;
+    doc.line(30, firmaY, 80, firmaY);
+    doc.setFontSize(9);
+    doc.text("Firma y Sello Emisor", 55, firmaY + 5, { align: 'center' });
     
-    doc.line(130, finalY, 180, finalY);
-    doc.text("Firma Recibí", 145, finalY + 5);
+    doc.line(130, firmaY, 180, firmaY);
+    doc.text("Firma Receptor", 155, firmaY + 5, { align: 'center' });
+
+    // Pie de página
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text("Este documento sirve como comprobante de pago válido para la empresa.", 105, 285, { align: 'center' });
 
     doc.save(`Recibo_Alpha_${r.id}.pdf`);
   };
@@ -120,8 +154,8 @@ const handleSubmit = async (e) => {
             <label style={styles.label}>Concepto del Pago</label>
             <textarea style={styles.textarea} placeholder="Detalle el motivo del pago..." value={form.concepto} onChange={e => setForm({...form, concepto: e.target.value})} required />
           </div>
-          <button type="submit" style={styles.btnSave}>
-            <Plus size={18} /> GENERAR COMPROBANTE
+          <button type="submit" style={styles.btnSave} disabled={loading}>
+            {loading ? <Loader2 size={18} className="animate-spin" /> : <><Plus size={18} /> GENERAR COMPROBANTE</>}
           </button>
         </form>
 
@@ -165,7 +199,7 @@ const handleSubmit = async (e) => {
 };
 
 const styles = {
-  container: { padding: '40px 20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
+  container: { padding: '40px 20px', backgroundColor: '#f1f5f9', minHeight: '100vh', fontFamily: 'sans-serif' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1000px', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' },
   headerContainer: { marginBottom: '30px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' },
   header: { display: 'flex', alignItems: 'center', gap: '12px', color: '#0f172a', margin: 0 },
@@ -175,13 +209,13 @@ const styles = {
   label: { fontSize: '12px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' },
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' },
   textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', minHeight: '80px', resize: 'vertical' },
-  btnSave: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '10px' },
+  btnSave: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '10px', transition: '0.3s' },
   tableWrapper: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
   thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '12px', height: '40px' },
-  tdRow: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' },
+  tdRow: { borderBottom: '1px solid #f1f5f9' },
   td: { padding: '15px 10px', fontSize: '14px', color: '#334155' },
-  btnIcon: { background: '#e2e8f0', border: 'none', color: '#475569', cursor: 'pointer', padding: '8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', transition: 'all 0.2s' },
+  btnIcon: { background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569', cursor: 'pointer', padding: '8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', transition: 'all 0.2s' },
 };
 
 export default Recibos;
