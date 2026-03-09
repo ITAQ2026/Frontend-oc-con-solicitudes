@@ -35,38 +35,60 @@ const OrdenesTrabajo = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.vehiculoId) return alert("Por favor, selecciona un vehículo.");
+    if (!form.vehiculoId) return alert("Selecciona un vehículo");
     
     setLoading(true);
 
-    // 🛠️ PAYLOAD CONFIGURADO SEGÚN TUS ENTIDADES TYPEORM
+    // 🚀 MEGA-PAYLOAD: Enviamos español + inglés + camelCase
+    // Para que el DTO del Backend capture lo que reconozca.
     const payload = {
-      // 1. Strings (texto plano)
+      // 1. Variantes de Descripción
       descripcion_falla: form.descripcion_falla.trim(),
+      descripcionFalla: form.descripcion_falla.trim(),
+      description: form.descripcion_falla.trim(),
+
+      // 2. Variantes de Vehículo
+      vehiculoId: parseInt(form.vehiculoId),
+      vehicleId: parseInt(form.vehiculoId),
+      vehiculo: { id: parseInt(form.vehiculoId) },
+      vehicle: { id: parseInt(form.vehiculoId) },
+
+      // 3. Variantes de Kilometraje
+      kilometraje: parseInt(form.kilometraje),
+      mileage: parseInt(form.kilometraje),
+
+      // 4. Variantes de Responsable
       responsable: form.responsable.trim(),
-      tareas_realizadas: "Pendiente de revisión",
+      responsible: form.responsable.trim(),
+
+      // 5. Campos de sistema (JSONB y Strings)
+      tareas_realizadas: "Pendiente",
+      tareasRealizadas: "Pendiente",
+      tasks: "Pendiente",
+      repuestos_utilizados: [], // JSONB vacío
+      repuestosUtilizados: [],
+      spareParts: [],
       
-      // 2. Integers (números obligatorios)
-      kilometraje: parseInt(form.kilometraje, 10),
-      vehiculoId: parseInt(form.vehiculoId, 10),
-      
-      // 3. JSONB (PostgreSQL exige un objeto o array, no un string)
-      repuestos_utilizados: {}, 
-      
-      // 4. Timestamp (@CreateDateColumn en el backend lo maneja, pero lo enviamos)
       fecha: new Date().toISOString()
     };
 
+    console.log("📤 Enviando Mega-Payload de compatibilidad:", payload);
+
     try {
-      await api.post('/api/ordenes-trabajo', payload); 
-      alert("✅ Orden de Trabajo registrada exitosamente.");
+      const response = await api.post('/api/ordenes-trabajo', payload); 
+      console.log("✅ ¡POR FIN! El servidor aceptó los datos:", response.data);
+      alert("✅ ¡ORDEN CREADA CON ÉXITO!");
       
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) { 
-      console.error("Error detallado del servidor:", err.response?.data);
-      const msg = err.response?.data?.message;
-      alert(`Error 500: ${Array.isArray(msg) ? msg.join(", ") : "Fallo en la base de datos (revisa el JSONB o tipos numéricos)"}`); 
+      console.error("❌ ERROR 500 PERSISTENTE:", err.response?.data);
+      
+      // Si el error trae un mensaje de validación, lo mostramos
+      const serverMessage = err.response?.data?.message;
+      const detail = Array.isArray(serverMessage) ? serverMessage.join(", ") : serverMessage;
+      
+      alert(`Sigue fallando. Error: ${detail || "Internal Server Error"}. Revisa los logs de Render ahora mismo.`); 
     } finally {
       setLoading(false);
     }
