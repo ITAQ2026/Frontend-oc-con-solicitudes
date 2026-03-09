@@ -10,23 +10,20 @@ const Vehiculos = () => {
     fetchVehiculos();
   }, []);
 
-  const fetchVehiculos = async () => {
-    try {
-      // CORRECCIÓN FINAL: Solo ponemos '/vehiculos' 
-      // porque el '/api' ya viene de la baseURL en api.js
-      const res = await api.get('/vehiculos'); 
-      setVehiculos(res.data);
-    } catch (err) { 
-      console.error("Error al cargar flota", err); 
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      // CORRECCIÓN: Se quita /api/
-      await api.post('/vehiculos', form);
-      alert("✅ Vehículo guardado con éxito");
+  // Cargar flota
+const fetchVehiculos = async () => {
+  try {
+    const res = await api.get('/api/vehiculos'); // Agregado /api
+    setVehiculos(res.data);
+  } catch (err) {
+    console.error("Error al cargar flota", err);
+  }
+};
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api.post('/api/vehiculos', form); // Agregado /api
+    alert("✅ Vehículo guardado");
       setForm({ patente: '', modelo: '', anio: '', vencimiento_vtv: '' });
       fetchVehiculos();
     } catch (err) { 
