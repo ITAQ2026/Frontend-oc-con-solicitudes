@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Wrench, Plus, Download, Gauge, User } from 'lucide-react';
+import { Wrench, Plus, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -12,13 +12,10 @@ const OrdenesTrabajo = () => {
     descripcion_falla: '', 
     kilometraje: '', 
     responsable: '',
-    costo_estimado: '', 
     tipo: 'Preventivo' 
   });
 
-  useEffect(() => {
-    fetchDatos();
-  }, []);
+  useEffect(() => { fetchDatos(); }, []);
 
   const fetchDatos = async () => {
     try {
@@ -28,52 +25,49 @@ const OrdenesTrabajo = () => {
       ]);
       setOrdenes(resOt.data || []);
       setVehiculos(resVeh.data || []);
-    } catch (err) { console.error("Error cargando datos", err); }
+    } catch (err) { console.error(err); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🛠️ CAMBIO CLAVE: Estructura de relación de TypeORM
-    // Muchos Backend de NestJS no aceptan "vehiculoId", 
-    // sino un objeto "vehiculo" con el ID dentro.
+    // 🚨 ESTE PAYLOAD INTENTA ADIVINAR LOS NOMBRES DEL DTO DEL BACKEND
     const payload = {
-      // 1. La descripción (intentamos ambos nombres otra vez)
+      // Intentamos con 'descripcion_falla' y 'descripcion'
       descripcion_falla: form.descripcion_falla,
       descripcion: form.descripcion_falla,
-
-      // 2. La Relación (Esto suele ser el motivo del Error 500)
-      vehiculo: { id: parseInt(form.vehiculoId) }, 
       
-      // 3. Campos obligatorios segun log de Render
-      kilometraje: parseInt(form.kilometraje),
+      // Intentamos enviar el ID del vehículo de las dos formas comunes
+      vehiculoId: Number(form.vehiculoId),
+      vehiculo: Number(form.vehiculoId), 
+      
+      // Otros campos obligatorios
+      kilometraje: Number(form.kilometraje),
       responsable: form.responsable,
       tipo: form.tipo,
-      costo_estimado: parseFloat(form.costo_estimado) || 0,
       
-      // 4. Valores por defecto para evitar el "DEFAULT" de PostgreSQL
+      // Campos que el log de Render mostró como NULL
       tareas_realizadas: "Pendiente",
       repuestos_utilizados: "Ninguno",
-      fecha: new Date().toISOString()
+      costo_estimado: 0
     };
 
-    console.log("Enviando Payload Estructurado:", payload);
+    console.log("Enviando Payload:", payload);
 
     try {
       await api.post('/api/ordenes-trabajo', payload); 
-      alert("✅ ¡ORDEN CREADA EXITOSAMENTE!");
-      setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '', costo_estimado: '', tipo: 'Preventivo' });
+      alert("✅ ¡ÉXITO! Orden creada.");
+      setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '', tipo: 'Preventivo' });
       fetchDatos();
     } catch (err) { 
-      console.error("Respuesta fallida del servidor:", err.response?.data);
-      alert(`Error 500: Revisa si el nombre en el Backend es 'descripcion' o 'descripcion_falla'`); 
+      console.error("Error del servidor:", err.response?.data);
+      alert("❌ Error 500: El servidor sigue sin ver los campos. Revisa el DTO en el Backend."); 
     }
   };
 
-  // --- El resto del componente (descargarOT y return) se mantiene igual que la versión anterior ---
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
+    doc.text("ORDEN DE TRABAJO", 105, 20, { align: 'center' });
     doc.autoTable({
       startY: 30,
       head: [['Campo', 'Valor']],
@@ -88,81 +82,43 @@ const OrdenesTrabajo = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.header}><Wrench size={24} /> Nueva Orden de Trabajo</h2>
-        <form onSubmit={handleSubmit} style={styles.formGrid}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Vehículo</label>
-            <select style={styles.input} value={form.vehiculoId} onChange={e => setForm({...form, vehiculoId: e.target.value})} required>
-              <option value="">Seleccionar...</option>
-              {vehiculos.map(v => <option key={v.id} value={v.id}>{v.patente}</option>)}
-            </select>
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Kilometraje</label>
-            <input style={styles.input} type="number" value={form.kilometraje} onChange={e => setForm({...form, kilometraje: e.target.value})} required />
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Responsable</label>
-            <input style={styles.input} type="text" value={form.responsable} onChange={e => setForm({...form, responsable: e.target.value})} required />
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Tipo</label>
-            <select style={styles.input} value={form.tipo} onChange={e => setForm({...form, tipo: e.target.value})}>
-              <option value="Preventivo">Preventivo</option>
-              <option value="Correctivo">Correctivo</option>
-            </select>
-          </div>
-          <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
-            <label style={styles.label}>Descripción de la Falla</label>
-            <textarea style={styles.textarea} value={form.descripcion_falla} onChange={e => setForm({...form, descripcion_falla: e.target.value})} required />
-          </div>
-          <button type="submit" style={styles.btnSave}><Plus size={18}/> ABRIR ORDEN</button>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+      <div style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+        <h2><Wrench /> Nueva Orden</h2>
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '10px' }}>
+          <select value={form.vehiculoId} onChange={e => setForm({...form, vehiculoId: e.target.value})} required style={{ padding: '8px' }}>
+            <option value="">Seleccionar Vehículo...</option>
+            {vehiculos.map(v => <option key={v.id} value={v.id}>{v.patente}</option>)}
+          </select>
+          <input type="number" placeholder="Kilometraje" value={form.kilometraje} onChange={e => setForm({...form, kilometraje: e.target.value})} required style={{ padding: '8px' }} />
+          <input type="text" placeholder="Responsable" value={form.responsable} onChange={e => setForm({...form, responsable: e.target.value})} required style={{ padding: '8px' }} />
+          <textarea placeholder="Descripción de la falla" value={form.descripcion_falla} onChange={e => setForm({...form, descripcion_falla: e.target.value})} required style={{ padding: '8px', minHeight: '80px' }} />
+          <button type="submit" style={{ background: '#000', color: '#fff', padding: '10px', cursor: 'pointer', border: 'none' }}>ABRIR ORDEN</button>
         </form>
 
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thRow}>
-                <th>FECHA</th>
-                <th>VEHÍCULO</th>
-                <th>RESPONSABLE</th>
-                <th>PDF</th>
+        <table style={{ width: '100%', marginTop: '20px', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
+              <th>ID</th>
+              <th>Vehículo</th>
+              <th>Responsable</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ordenes.map(ot => (
+              <tr key={ot.id} style={{ borderBottom: '1px solid #eee' }}>
+                <td>{ot.id}</td>
+                <td>{ot.vehiculo?.patente}</td>
+                <td>{ot.responsable}</td>
+                <td><button onClick={() => descargarOT(ot)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><Download size={16} /></button></td>
               </tr>
-            </thead>
-            <tbody>
-              {ordenes.map(ot => (
-                <tr key={ot.id} style={styles.tdRow}>
-                  <td style={styles.td}>{new Date(ot.fecha_creacion || ot.fecha).toLocaleDateString()}</td>
-                  <td style={styles.td}>{ot.vehiculo?.patente}</td>
-                  <td style={styles.td}>{ot.responsable}</td>
-                  <td style={styles.td}><button onClick={() => descargarOT(ot)} style={styles.btnIcon}><Download size={16} /></button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: { padding: '20px', backgroundColor: '#f8fafc', minHeight: '100vh' },
-  card: { background: 'white', borderRadius: '12px', padding: '25px', maxWidth: '800px', margin: '0 auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' },
-  header: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px', background: '#f1f5f9', padding: '15px', borderRadius: '8px' },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '5px' },
-  label: { fontSize: '11px', fontWeight: 'bold', color: '#64748b' },
-  input: { padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' },
-  textarea: { padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', minHeight: '60px' },
-  btnSave: { gridColumn: 'span 2', background: '#0f172a', color: 'white', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0' },
-  tdRow: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '10px 5px' },
-  btnIcon: { border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }
 };
 
 export default OrdenesTrabajo;
