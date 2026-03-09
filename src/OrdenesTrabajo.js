@@ -7,59 +7,59 @@ import 'jspdf-autotable';
 const OrdenesTrabajo = () => {
   const [ordenes, setOrdenes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
-  const [form, setForm] = useState({ vehiculoId: '', descripcion: '', costo_estimado: '', tipo: 'Preventivo' });
+  
+  // ✅ CORRECCIÓN: 'descripcion' pasa a ser 'descripcion_falla'
+  const [form, setForm] = useState({ 
+    vehiculoId: '', 
+    descripcion_falla: '', 
+    costo_estimado: '', 
+    tipo: 'Preventivo' 
+  });
 
   useEffect(() => {
     fetchDatos();
   }, []);
 
-  // Cargar datos
-const fetchDatos = async () => {
-  try {
-    const [resOt, resVeh] = await Promise.all([
-      api.get('/api/ordenes-trabajo'), // ✅ Agregado /api
-      api.get('/api/vehiculos')        // ✅ Agregado /api
-    ]);
-    setOrdenes(resOt.data);
-    setVehiculos(resVeh.data);
-  } catch (err) { console.error("Error cargando datos", err); }
-};
+  const fetchDatos = async () => {
+    try {
+      const [resOt, resVeh] = await Promise.all([
+        api.get('/api/ordenes-trabajo'),
+        api.get('/api/vehiculos')
+      ]);
+      setOrdenes(resOt.data);
+      setVehiculos(resVeh.data);
+    } catch (err) { console.error("Error cargando datos", err); }
+  };
 
-  // Crear OT
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    await api.post('/api/ordenes-trabajo', form); // ✅ Agregado /api
-    alert("✅ Orden de Trabajo creada");
-    setForm({ vehiculoId: '', descripcion: '', costo_estimado: '', tipo: 'Preventivo' });
-    fetchDatos();
-  } catch (err) { alert("❌ Error al crear OT"); }
-};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // ✅ Ahora el objeto enviado tendrá la llave 'descripcion_falla'
+      await api.post('/api/ordenes-trabajo', form); 
+      alert("✅ Orden de Trabajo creada con éxito");
+      setForm({ vehiculoId: '', descripcion_falla: '', costo_estimado: '', tipo: 'Preventivo' });
+      fetchDatos();
+    } catch (err) { 
+      console.error(err);
+      alert("❌ Error al crear OT: Verifique los datos obligatorios"); 
+    }
+  };
 
-  // --- FUNCIÓN PARA GENERAR EL PDF DE LA OT ---
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-
-    // Encabezado Pro
     doc.setFontSize(18);
     doc.setTextColor(30, 41, 59);
     doc.text("ALPHA QUÍMICA S.A.", 105, 20, { align: 'center' });
-    
     doc.setFontSize(14);
     doc.text("ORDEN DE TRABAJO Y MANTENIMIENTO", 105, 30, { align: 'center' });
-    
-    doc.setDrawColor(200);
     doc.line(20, 35, 190, 35);
 
-    // Información de la OT
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text(`OT Número: #OT-00${ot.id}`, 20, 45);
     doc.setFont("helvetica", "normal");
     doc.text(`Fecha: ${new Date(ot.fecha_creacion).toLocaleDateString()}`, 150, 45);
-    doc.text(`Estado: ${ot.estado || 'Abierta'}`, 20, 50);
 
-    // Datos del Vehículo en Tabla
     doc.autoTable({
       startY: 55,
       head: [['Información del Vehículo', 'Detalle']],
@@ -70,29 +70,17 @@ const handleSubmit = async (e) => {
         ['Presupuesto Estimado', `$${Number(ot.costo_estimado).toLocaleString('es-AR')}`],
       ],
       theme: 'grid',
-      headStyles: { fillColor: [51, 65, 85] }, // Slate-700
+      headStyles: { fillColor: [51, 65, 85] },
     });
 
-    // Descripción del Trabajo
     const currentY = doc.lastAutoTable.finalY + 15;
     doc.setFont("helvetica", "bold");
     doc.text("DESCRIPCIÓN TÉCNICA / FALLA REPORTADA:", 20, currentY);
     
     doc.setFont("helvetica", "normal");
-    const splitDesc = doc.splitTextToSize(ot.descripcion || 'Sin descripción detallada.', 170);
+    // ✅ CORRECCIÓN: Usar ot.descripcion_falla para el PDF también
+    const splitDesc = doc.splitTextToSize(ot.descripcion_falla || 'Sin descripción detallada.', 170);
     doc.text(splitDesc, 20, currentY + 7);
-
-    // Espacio para Observaciones del Taller
-    const obsY = currentY + 40;
-    doc.setDrawColor(220);
-    doc.rect(20, obsY, 170, 30);
-    doc.setFontSize(8);
-    doc.text("OBSERVACIONES DEL MECÁNICO / TALLER:", 22, obsY + 5);
-
-    // Pie de página
-    doc.setFontSize(10);
-    doc.text("Firma Responsable Logística", 105, 260, { align: 'center' });
-    doc.line(70, 258, 140, 258);
 
     doc.save(`OT_${ot.vehiculo?.patente || 'S-P'}_${ot.id}.pdf`);
   };
@@ -143,12 +131,13 @@ const handleSubmit = async (e) => {
           </div>
 
           <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
-            <label style={styles.label}>Descripción del Trabajo</label>
+            <label style={styles.label}>Descripción del Trabajo / Falla</label>
             <textarea 
               style={styles.textarea} 
               placeholder="Describa el problema o el mantenimiento a realizar..." 
-              value={form.descripcion} 
-              onChange={e => setForm({...form, descripcion: e.target.value})} 
+              // ✅ CORRECCIÓN: Vinculado a descripcion_falla
+              value={form.descripcion_falla} 
+              onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
               required 
             />
           </div>
@@ -185,11 +174,7 @@ const handleSubmit = async (e) => {
                     </span>
                   </td>
                   <td style={{ ...styles.td, textAlign: 'center' }}>
-                    <button 
-                      onClick={() => descargarOT(ot)} 
-                      style={styles.btnIcon}
-                      title="Descargar Orden"
-                    >
+                    <button onClick={() => descargarOT(ot)} style={styles.btnIcon}>
                       <Download size={16} />
                     </button>
                   </td>
@@ -203,6 +188,7 @@ const handleSubmit = async (e) => {
   );
 };
 
+// Los estilos se mantienen igual...
 const styles = {
   container: { padding: '30px', backgroundColor: '#f8fafc', minHeight: '100vh' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1000px', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
