@@ -1,24 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Wrench, Plus, Download, Gauge, User, FileText, Loader2 } from 'lucide-react';
+import { Wrench, Plus, Download, Gauge, User, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 const OrdenesTrabajo = () => {
   const [ordenes, setOrdenes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  
   const [form, setForm] = useState({ 
     vehiculoId: '', 
     descripcion_falla: '', 
     kilometraje: '', 
-    responsable: ''
+    responsable: '' 
   });
 
-  useEffect(() => {
-    fetchDatos();
-  }, []);
+  useEffect(() => { fetchDatos(); }, []);
 
   const fetchDatos = async () => {
     try {
@@ -28,188 +24,116 @@ const OrdenesTrabajo = () => {
       ]);
       setOrdenes(resOt.data || []);
       setVehiculos(resVeh.data || []);
-    } catch (err) {
-      console.error("Error al sincronizar con el servidor:", err);
-    }
+    } catch (err) { console.error("Error cargando datos:", err); }
   };
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
-    // 🎯 EL CAMBIO RADICAL:
-    // El servidor espera nombres en inglés/camelCase para validarlos,
-    // aunque en la base de datos se guarden con otros nombres.
+    // 🚀 PAYLOAD DEFINITIVO
+    // Forzamos los nombres exactos de la ENTIDAD que me pasaste antes.
     const payload = {
-      description: form.descripcion_falla.trim(), // 'descripcion_falla' -> 'description'
-      tasks: "Pendiente",                         // 'tareas_realizadas' -> 'tasks'
-      spareParts: {},                             // 'repuestos_utilizados' -> 'spareParts'
-      kilometraje: parseInt(form.kilometraje),    // Este SI llega ($1)
-      responsable: form.responsable.trim(),       // Este SI llega ($2)
-      vehiculoId: parseInt(form.vehiculoId),      // Este SI llega ($3)
+      descripcion_falla: form.descripcion_falla.trim(),
+      kilometraje: Number(form.kilometraje),
+      responsable: form.responsable.trim(),
+      vehiculoId: Number(form.vehiculoId),
+      
+      // Estos campos son NULLABLE en tu entidad, pero la DB los pide.
+      // Los enviamos vacíos pero NO nulos.
+      tareas_realizadas: "Pendiente",
+      repuestos_utilizados: {}, // Objeto vacío para JSONB
+      fecha: new Date().toISOString()
     };
 
-    console.log("📤 Enviando Payload Traducido al DTO:", payload);
+    console.log("📤 Enviando Payload Final:", payload);
 
     try {
-      const res = await api.post('/api/ordenes-trabajo', payload); 
-      console.log("✅ Respuesta:", res.data);
-      alert("✅ ¡ORDEN CREADA! El problema eran los nombres de los campos.");
-      
+      const res = await api.post('/api/ordenes-trabajo', payload);
+      console.log("✅ Servidor aceptó:", res.data);
+      alert("✅ ¡ORDEN CREADA EXITOSAMENTE!");
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
-    } catch (err) { 
-      console.error("❌ Error persistente:", err.response?.data);
-      
-      // Si el error de validación dice que falta "description", ya sabemos que es por ahí
-      const msg = err.response?.data?.message;
-      alert(`Error: ${Array.isArray(msg) ? msg.join(", ") : "Revisa la consola para ver qué campo falta"}`); 
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("❌ Error 500 - Detalles:", err.response?.data);
+      alert("Error 500: El servidor sigue rechazando la descripción. Verificá que no haya espacios extra en el nombre del campo.");
     }
   };
 
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("ALPHA QUÍMICA S.A. - OT", 105, 20, { align: 'center' });
-    
+    doc.text("ORDEN DE TRABAJO", 105, 20, { align: 'center' });
     doc.autoTable({
       startY: 30,
-      head: [['Propiedad', 'Detalle']],
+      head: [['Campo', 'Valor']],
       body: [
-        ['ID Orden', `#${ot.id}`],
+        ['ID', `#${ot.id}`],
         ['Vehículo', ot.vehiculo?.patente || 'N/A'],
-        ['Modelo', ot.vehiculo?.modelo || 'N/A'],
-        ['Responsable', ot.responsable || 'No asignado'],
-        ['Kilometraje', `${ot.kilometraje} KM`],
-        ['Fecha', new Date(ot.fecha).toLocaleDateString()],
-      ],
-      theme: 'grid'
+        ['Responsable', ot.responsable],
+        ['KM', ot.kilometraje],
+        ['Falla', ot.descripcion_falla]
+      ]
     });
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Descripción de Falla:", 14, doc.lastAutoTable.finalY + 10);
-    doc.setFont("helvetica", "normal");
-    const splitText = doc.splitTextToSize(ot.descripcion_falla || "", 180);
-    doc.text(splitText, 14, doc.lastAutoTable.finalY + 17);
-
-    doc.save(`Orden_${ot.id}_${ot.vehiculo?.patente || 'ST'}.pdf`);
+    doc.save(`OT_${ot.id}.pdf`);
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={styles.header}>
-          <Wrench size={28} color="#0f172a" />
-          <h2 style={styles.title}>Apertura de Orden de Trabajo</h2>
-        </div>
-
+        <h2 style={styles.header}><Wrench /> Gestión de Órdenes</h2>
         <form onSubmit={handleSubmit} style={styles.formGrid}>
-          {/* SELECCIÓN DE VEHÍCULO - CARGA DINÁMICA */}
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Seleccionar Unidad</label>
-            <select 
-              style={styles.input} 
-              value={form.vehiculoId} 
-              onChange={e => setForm({...form, vehiculoId: e.target.value})} 
-              required
-            >
-              <option value="">-- Patente / Modelo --</option>
-              {vehiculos.map(v => (
-                <option key={v.id} value={v.id}>{v.patente} - {v.modelo}</option>
-              ))}
+            <label style={styles.label}>Vehículo</label>
+            <select style={styles.input} value={form.vehiculoId} onChange={e => setForm({...form, vehiculoId: e.target.value})} required>
+              <option value="">Seleccionar...</option>
+              {vehiculos.map(v => <option key={v.id} value={v.id}>{v.patente}</option>)}
             </select>
           </div>
-
           <div style={styles.inputGroup}>
-            <label style={styles.label}><Gauge size={12}/> Kilometraje</label>
-            <input 
-              style={styles.input} 
-              type="number" 
-              placeholder="000000"
-              value={form.kilometraje} 
-              onChange={e => setForm({...form, kilometraje: e.target.value})} 
-              required 
-            />
+            <label style={styles.label}>Kilometraje</label>
+            <input style={styles.input} type="number" value={form.kilometraje} onChange={e => setForm({...form, kilometraje: e.target.value})} required />
           </div>
-
           <div style={styles.inputGroup}>
-            <label style={styles.label}><User size={12}/> Responsable</label>
-            <input 
-              style={styles.input} 
-              type="text" 
-              placeholder="Nombre del chofer"
-              value={form.responsable} 
-              onChange={e => setForm({...form, responsable: e.target.value})} 
-              required 
-            />
+            <label style={styles.label}>Responsable</label>
+            <input style={styles.input} type="text" value={form.responsable} onChange={e => setForm({...form, responsable: e.target.value})} required />
           </div>
-
           <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
-            <label style={styles.label}><FileText size={12}/> Descripción de la Falla</label>
-            <textarea 
-              style={styles.textarea} 
-              placeholder="Describa el problema reportado..."
-              value={form.descripcion_falla} 
-              onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
-              required 
-            />
+            <label style={styles.label}>Falla Reportada</label>
+            <textarea style={styles.textarea} value={form.descripcion_falla} onChange={e => setForm({...form, descripcion_falla: e.target.value})} required />
           </div>
-
-          <button type="submit" style={styles.btnSubmit} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : <><Plus size={18}/> REGISTRAR OT</>}
-          </button>
+          <button type="submit" style={styles.btnSave}>REGISTRAR ORDEN</button>
         </form>
 
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thRow}>
-                <th>ID</th>
-                <th>FECHA</th>
-                <th>UNIDAD</th>
-                <th>PDF</th>
+        <table style={styles.table}>
+          <thead>
+            <tr><th>FECHA</th><th>UNIDAD</th><th>RESPONSABLE</th><th>PDF</th></tr>
+          </thead>
+          <tbody>
+            {ordenes.map(ot => (
+              <tr key={ot.id}>
+                <td>{new Date(ot.fecha).toLocaleDateString()}</td>
+                <td>{ot.vehiculo?.patente}</td>
+                <td>{ot.responsable}</td>
+                <td><button onClick={() => descargarOT(ot)}><Download size={16}/></button></td>
               </tr>
-            </thead>
-            <tbody>
-              {ordenes.map(ot => (
-                <tr key={ot.id} style={styles.tdRow}>
-                  <td style={styles.td}>#{ot.id}</td>
-                  <td style={styles.td}>{new Date(ot.fecha).toLocaleDateString()}</td>
-                  <td style={styles.td}><strong>{ot.vehiculo?.patente}</strong></td>
-                  <td style={styles.td}>
-                    <button onClick={() => descargarOT(ot)} style={styles.btnIcon}>
-                      <Download size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
-  card: { background: 'white', borderRadius: '12px', padding: '30px', maxWidth: '850px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
-  header: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px' },
-  title: { fontSize: '22px', fontWeight: 'bold', color: '#1e293b', margin: 0 },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '30px' },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' },
-  input: { padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' },
-  textarea: { padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', minHeight: '80px', fontFamily: 'inherit' },
-  btnSubmit: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
-  tableWrapper: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  thRow: { textAlign: 'left', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '12px' },
-  tdRow: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '12px 5px', fontSize: '14px' },
-  btnIcon: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }
+  container: { padding: '20px', backgroundColor: '#f1f5f9' },
+  card: { background: 'white', borderRadius: '12px', padding: '25px', maxWidth: '800px', margin: '0 auto' },
+  header: { display: 'flex', gap: '10px', marginBottom: '20px' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#f8fafc', padding: '15px', borderRadius: '8px' },
+  inputGroup: { display: 'flex', flexDirection: 'column' },
+  label: { fontSize: '12px', fontWeight: 'bold', color: '#64748b' },
+  input: { padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' },
+  textarea: { padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', minHeight: '60px' },
+  btnSave: { gridColumn: 'span 2', background: '#0f172a', color: 'white', padding: '10px', borderRadius: '6px', cursor: 'pointer', border: 'none' },
+  table: { width: '100%', marginTop: '20px', borderCollapse: 'collapse' }
 };
 
 export default OrdenesTrabajo;
