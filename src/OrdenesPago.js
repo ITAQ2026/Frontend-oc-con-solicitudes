@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Landmark, FileText, Download, Send, History } from 'lucide-react';
 
 const OrdenesPago = () => {
+  // Cambia este string por tu Base64 real del logo
+  const LOGO_ALPHA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; 
+
   const [proveedores, setProveedores] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [pago, setPago] = useState({
@@ -22,7 +26,6 @@ const OrdenesPago = () => {
 
   const cargarDatos = async () => {
     try {
-      // ✅ Rutas corregidas con el prefijo /api/
       const [resProv, resPagos] = await Promise.all([
         api.get('/api/proveedores'),
         api.get('/api/ordenes-pago')
@@ -37,59 +40,75 @@ const OrdenesPago = () => {
   const generarPDF = (p) => {
     const doc = new jsPDF();
     const idFormateado = String(p.id).padStart(4, '0');
-    // Usamos el monto guardado en BD o calculamos en el momento
     const totalCalculado = p.monto || (p.cantidad * p.precioUnitario);
     
-    // --- ENCABEZADO AZUL ---
-    doc.setFillColor(41, 128, 185); 
+    // --- CABECERA ---
+    doc.setFillColor(30, 41, 59); // Color oscuro profesional
     doc.rect(0, 0, 210, 40, 'F');
+    
+    // Espacio para el logo (ajustado para que no se deforme)
+    try { 
+      doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
+    } catch (e) { console.warn("Logo no cargado"); }
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
-    doc.text("ORDEN DE PAGO", 14, 25);
-    doc.setFontSize(10);
-    doc.text("ADMINISTRACIÓN Y GESTIÓN DE PROYECTOS", 196, 25, { align: "right" });
+    doc.text("ORDEN DE PAGO", 200, 22, { align: 'right' });
+    doc.setFontSize(9);
+    doc.text("ALPHA QUÍMICA S.R.L.", 200, 30, { align: 'right' });
+    doc.text("COMPROBANTE INTERNO DE EGRESO", 200, 35, { align: 'right' });
     
-    // Datos principales
+    // --- DATOS PRINCIPALES ---
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.text(`Comprobante Nro: ${idFormateado}`, 14, 50);
-    doc.text(`Fecha: ${new Date(p.fecha || p.fecha_creacion).toLocaleDateString()}`, 14, 56);
-    doc.text(`Caja: ${p.caja || "General"}`, 14, 62);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`NRO ORDEN: ${idFormateado}`, 15, 50);
+    doc.text(`FECHA: ${new Date(p.fecha || p.fecha_creacion).toLocaleDateString()}`, 15, 56);
+    doc.text(`CAJA/ORIGEN: ${(p.caja || "GENERAL").toUpperCase()}`, 15, 62);
     
-    // --- TABLA DETALLADA ---
+    // --- TABLA DE DETALLE ---
     autoTable(doc, {
       startY: 70,
-      head: [["Producto / Servicio", "Proveedor", "Cant.", "P. Unit", "Total"]],
-      body: [
-        [
-          p.productoServicio || "S/D",
-          p.proveedorNombre, 
-          p.cantidad, 
-          `$${Number(p.precioUnitario || 0).toLocaleString()}`, 
-          `$${Number(totalCalculado).toLocaleString()}`
-        ]
-      ],
+      head: [["DESCRIPCIÓN", "PROVEEDOR", "CANT.", "P. UNIT", "TOTAL"]],
+      body: [[
+        p.productoServicio.toUpperCase(),
+        p.proveedorNombre.toUpperCase(), 
+        p.cantidad, 
+        `$ ${Number(p.precioUnitario || 0).toLocaleString('es-AR')}`, 
+        `$ ${Number(totalCalculado).toLocaleString('es-AR')}`
+      ]],
       theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185] }
+      headStyles: { fillColor: [30, 41, 59], halign: 'center' },
+      styles: { fontSize: 9 },
+      columnStyles: {
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        4: { halign: 'right' }
+      }
     });
 
-    // --- DETALLES DE PAGO ---
+    // --- INFORMACIÓN ADICIONAL ---
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 10,
-      head: [["Método de Pago", "Referencia"]],
-      body: [
-        [p.metodoPago, p.referencia || "-"]
-      ],
-      theme: 'striped'
+      head: [["MÉTODO DE PAGO", "REFERENCIA / NRO OPERACIÓN"]],
+      body: [[p.metodoPago.toUpperCase(), (p.referencia || "SIN REFERENCIA").toUpperCase()]],
+      theme: 'striped',
+      headStyles: { fillColor: [71, 85, 105] }
     });
 
-    // --- SECCIÓN DE FIRMA ---
-    const finalY = doc.lastAutoTable.finalY + 45;
-    doc.line(14, finalY, 80, finalY); 
-    doc.setFontSize(10);
-    doc.text("FIRMA AUTORIZADA", 14, finalY + 5);
-    doc.text("ACLARACIÓN:", 14, finalY + 13);
-    doc.text("DNI:", 14, finalY + 21);
+    // --- FIRMAS ---
+    const finalY = 250;
+    doc.setDrawColor(200);
+    doc.line(15, finalY, 80, finalY); 
+    doc.line(130, finalY, 195, finalY);
+    
+    doc.setFontSize(9);
+    doc.text("FIRMA AUTORIZADA", 47, finalY + 5, { align: 'center' });
+    doc.text("RECIBÍ CONFORME", 162, finalY + 5, { align: 'center' });
+    
+    doc.setFontSize(8);
+    doc.text("ACLARACIÓN: .........................", 15, finalY + 15);
+    doc.text("DNI: .........................", 15, finalY + 22);
 
     doc.save(`Pago_${idFormateado}_${p.proveedorNombre}.pdf`);
   };
@@ -100,7 +119,6 @@ const OrdenesPago = () => {
 
     try {
       const montoTotal = Number(pago.cantidad) * Number(pago.precioUnitario);
-      // ✅ Ruta corregida con /api/
       await api.post('/api/ordenes-pago', { ...pago, monto: montoTotal });
       
       alert("✅ Orden de Pago registrada con éxito");
@@ -110,23 +128,22 @@ const OrdenesPago = () => {
       });
       cargarDatos();
     } catch (err) { 
-      console.error(err);
-      alert("Error al registrar el pago en el servidor"); 
+      alert("Error al registrar el pago"); 
     }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={styles.header}>💸 Nueva Orden de Pago</h2>
+        <h2 style={styles.header}><Landmark size={24} /> Nueva Orden de Pago</h2>
         <form onSubmit={enviar}>
           
           <div style={styles.gridRow}>
-            <div style={{gridColumn: 'span 2'}}>
+            <div style={{flex: '1 1 100%'}}>
                <label style={styles.label}>Producto / Servicio</label>
                <input 
                  style={styles.input} 
-                 placeholder="Ej: Servicio de Limpieza / Compra de Insumos" 
+                 placeholder="Ej: Servicio de Mantenimiento / Compra de Repuestos" 
                  value={pago.productoServicio} 
                  onChange={e => setPago({...pago, productoServicio: e.target.value})} 
                  required 
@@ -135,33 +152,30 @@ const OrdenesPago = () => {
           </div>
 
           <div style={styles.gridRow}>
-            <div>
+            <div style={{flex: '1 1 300px'}}>
               <label style={styles.label}>Proveedor</label>
               <select style={styles.input} required value={pago.proveedorNombre} onChange={e => setPago({...pago, proveedorNombre: e.target.value})}>
-                <option value="">Seleccionar...</option>
+                <option value="">Seleccionar proveedor...</option>
                 {proveedores.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
               </select>
             </div>
-            <div>
+            <div style={{flex: '1 1 300px'}}>
               <label style={styles.label}>Caja / Origen Fondos</label>
-              <input style={styles.input} placeholder="Ej: Caja Chica / Banco" value={pago.caja} onChange={e => setPago({...pago, caja: e.target.value})} />
+              <input style={styles.input} placeholder="Ej: Banco Galicia / Caja Chica" value={pago.caja} onChange={e => setPago({...pago, caja: e.target.value})} />
             </div>
           </div>
 
           <div style={styles.gridRow}>
-            <div>
+            <div style={{flex: '1 1 140px'}}>
               <label style={styles.label}>Cantidad</label>
               <input style={styles.input} type="number" min="1" value={pago.cantidad} onChange={e => setPago({...pago, cantidad: e.target.value})} />
             </div>
-            <div>
+            <div style={{flex: '1 1 140px'}}>
               <label style={styles.label}>Precio Unitario</label>
               <input style={styles.input} type="number" step="0.01" placeholder="$ 0.00" value={pago.precioUnitario} onChange={e => setPago({...pago, precioUnitario: e.target.value})} required />
             </div>
-          </div>
-
-          <div style={styles.gridRow}>
-            <div>
-              <label style={styles.label}>Método</label>
+            <div style={{flex: '1 1 140px'}}>
+              <label style={styles.label}>Método de Pago</label>
               <select style={styles.input} value={pago.metodoPago} onChange={e => setPago({...pago, metodoPago: e.target.value})}>
                 <option value="Transferencia">Transferencia</option>
                 <option value="Efectivo">Efectivo</option>
@@ -170,51 +184,56 @@ const OrdenesPago = () => {
                 <option value="Cuenta Corriente">Cuenta Corriente</option>
               </select>
             </div>
-            <div>
-              <label style={styles.label}>Referencia de Pago</label>
-              <input style={styles.input} placeholder="Nro de comprobante o banco" value={pago.referencia} onChange={e => setPago({...pago, referencia: e.target.value})} />
+          </div>
+
+          <div style={styles.gridRow}>
+            <div style={{flex: '1 1 100%'}}>
+              <label style={styles.label}>Referencia (CBU, Nro Operación, Nro Cheque)</label>
+              <input style={styles.input} placeholder="Información adicional del pago" value={pago.referencia} onChange={e => setPago({...pago, referencia: e.target.value})} />
             </div>
           </div>
 
           <div style={styles.totalBox}>
-            Total a Liquidar: <strong>${(Number(pago.cantidad) * (Number(pago.precioUnitario) || 0)).toLocaleString()}</strong>
+            Monto a Liquidar: <strong>$ {(Number(pago.cantidad) * (Number(pago.precioUnitario) || 0)).toLocaleString('es-AR')}</strong>
           </div>
           
-          <button type="submit" style={styles.btnSubmit}>REGISTRAR Y GENERAR COMPROBANTE</button>
+          <button type="submit" style={styles.btnSubmit}>
+            <Send size={18} /> REGISTRAR Y DESCARGAR PDF
+          </button>
         </form>
       </div>
 
       <div style={styles.card}>
-        <h3 style={styles.header}>📋 Historial de Pagos</h3>
-        <div style={{overflowX: 'auto'}}>
-            <table style={styles.table}>
+        <h3 style={styles.header}><History size={20} /> Historial Reciente</h3>
+        <div style={styles.tableResponsive}>
+          <table style={styles.table}>
             <thead>
-                <tr>
+              <tr>
                 <th style={styles.th}>Nro</th>
-                <th style={styles.th}>Producto/Servicio</th>
                 <th style={styles.th}>Proveedor</th>
-                <th style={styles.th}>Monto</th>
+                <th style={styles.th}>Total</th>
                 <th style={styles.th}>Acción</th>
-                </tr>
+              </tr>
             </thead>
             <tbody>
-                {historial.length === 0 ? (
-                    <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>No hay registros de pagos</td></tr>
-                ) : (
-                    historial.map(p => (
-                    <tr key={p.id}>
-                        <td style={styles.td}>#{String(p.id).padStart(4, '0')}</td>
-                        <td style={styles.td}>{p.productoServicio}</td>
-                        <td style={styles.td}>{p.proveedorNombre}</td>
-                        <td style={styles.td}>${Number(p.monto).toLocaleString()}</td>
-                        <td style={styles.td}>
-                        <button onClick={() => generarPDF(p)} style={styles.btnPdf}>Ver PDF</button>
-                        </td>
-                    </tr>
-                    ))
-                )}
+              {historial.length === 0 ? (
+                <tr><td colSpan="4" style={{textAlign:'center', padding:'20px'}}>Sin movimientos registrados</td></tr>
+              ) : (
+                historial.slice(0, 10).map(p => (
+                  <tr key={p.id}>
+                    <td style={styles.td}>#{String(p.id).padStart(4, '0')}</td>
+                    <td style={styles.td}>{p.proveedorNombre}</td>
+                    <td style={styles.td}>$ {Number(p.monto).toLocaleString('es-AR')}</td>
+                    <td style={styles.td}>
+                      <button onClick={() => generarPDF(p)} style={styles.btnPdf}>
+                        <Download size={14} /> PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
-            </table>
+          </table>
         </div>
       </div>
     </div>
@@ -222,18 +241,19 @@ const OrdenesPago = () => {
 };
 
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' },
-  card: { background: 'white', borderRadius: '15px', padding: '25px', boxShadow: '0 8px 20px rgba(0,0,0,0.08)', maxWidth: '850px', margin: '0 auto 20px' },
-  header: { borderBottom: '2px solid #edf2f7', paddingBottom: '10px', color: '#2c3e50', marginBottom: '20px', fontWeight: 'bold' },
-  gridRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' },
-  label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#7f8c8d', marginBottom: '5px', textTransform: 'uppercase' },
-  input: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '14px', boxSizing: 'border-box', outline: 'none' },
-  totalBox: { background: '#f0fff4', padding: '15px', borderRadius: '10px', textAlign: 'right', fontSize: '18px', color: '#2f855a', marginBottom: '15px', border: '1px solid #c6f6d5' },
-  btnSubmit: { width: '100%', padding: '14px', background: '#2980b9', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' },
-  btnPdf: { background: '#edf2f7', color: '#2980b9', border: '1px solid #2980b9', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
+  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
+  card: { background: 'white', borderRadius: '16px', padding: '25px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', maxWidth: '900px', margin: '0 auto 20px' },
+  header: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', marginBottom: '20px', fontSize: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' },
+  gridRow: { display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '15px' },
+  label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase' },
+  input: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.2s' },
+  totalBox: { background: '#f8fafc', padding: '15px', borderRadius: '12px', textAlign: 'right', fontSize: '20px', color: '#0f172a', marginBottom: '20px', border: '1px solid #e2e8f0' },
+  btnSubmit: { width: '100%', padding: '16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' },
+  btnPdf: { background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' },
+  tableResponsive: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #edf2f7', color: '#7f8c8d', fontSize: '12px', textTransform: 'uppercase' },
-  td: { padding: '12px', borderBottom: '1px solid #edf2f7', fontSize: '14px', color: '#334155' }
+  th: { textAlign: 'left', padding: '12px', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '12px', textTransform: 'uppercase' },
+  td: { padding: '12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', color: '#1e293b' }
 };
 
 export default OrdenesPago;

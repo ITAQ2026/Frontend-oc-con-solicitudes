@@ -18,7 +18,7 @@ const Dashboard = () => {
 
   // 2. Definimos todos los módulos
   const allModules = [
-    { title: 'Solicitudes', icon: <ClipboardList size={40} />, path: '/solicitudes', color: '#ef4444', desc: 'Gestionar nuevas solicitudes de insumos', adminOnly: false },
+    { title: 'Solicitudes de Compra', icon: <ClipboardList size={40} />, path: '/solicitudes', color: '#ef4444', desc: 'Gestionar nuevas solicitudes de insumos', adminOnly: false },
     { title: 'Proveedores', icon: <Users size={40} />, path: '/proveedores', color: '#3b82f6', desc: 'Gestionar base de datos de proveedores', adminOnly: true },
     { title: 'Órdenes de Compra', icon: <ShoppingCart size={40} />, path: '/compras', color: '#10b981', desc: 'Generar pedidos y PDFs de compra', adminOnly: true },
     { title: 'Órdenes de Pago', icon: <CreditCard size={40} />, path: '/pagos', color: '#f59e0b', desc: 'Registrar salidas de dinero y recibos', adminOnly: true },

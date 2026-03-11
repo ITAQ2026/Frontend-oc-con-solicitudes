@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import api from './api';
 import { jsPDF } from 'jspdf';
@@ -69,6 +68,12 @@ const OrdenesCompra = () => {
     setItems([...items, { producto: '', cantidad: 1, precio: '' }]);
   };
 
+  const eliminarFila = (index) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  };
+
   const exportarPDF = (itemsFinales, datosOrden = null) => {
     const doc = new jsPDF();
     const info = datosOrden || form;
@@ -79,30 +84,38 @@ const OrdenesCompra = () => {
     // --- CABECERA ---
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 45, 'F');
-    try { doc.addImage(LOGO_ALPHA, 'PNG', 15, 5, 75, 35); } catch (e) {}
+    
+    // Ajuste de tamaño de logo para que no se vea deformado (proporción 2:1 aprox)
+    try { 
+      doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 55, 28); 
+    } catch (e) {
+      console.warn("Logo no disponible");
+    }
     
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22); doc.setFont("helvetica", "bold");
-    doc.text("ORDEN DE COMPRA", 200, 25, { align: 'right' });
-    doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text("ALPHA QUÍMICA S.R.L. | CUIT: 30-60968636-3", 200, 35, { align: 'right' });
+    doc.setFontSize(20); doc.setFont("helvetica", "bold");
+    doc.text("ORDEN DE COMPRA", 200, 22, { align: 'right' });
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+    doc.text("ALPHA QUÍMICA S.R.L.", 200, 30, { align: 'right' });
+    doc.text("CUIT: 30-60968636-3", 200, 35, { align: 'right' });
 
     // --- DATOS DE LA ORDEN ---
     doc.setTextColor(30, 41, 59);
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(15, 50, 180, 32, 3, 3, 'F'); 
     
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text("PROVEEDOR:", 20, 60);
     doc.text("CONDICIÓN:", 20, 70);
-    doc.text("FECHA:", 140, 60);
-    doc.text("REF:", 140, 70);
+    doc.text("FECHA:", 135, 60);
+    doc.text("REF:", 135, 70);
     
     doc.setFont("helvetica", "normal");
-    doc.text(`${(info.proveedor || info.proveedorNombre || '').toUpperCase()}`, 55, 60);
-    doc.text(`${(info.condicionPago || 'Efectivo').toUpperCase()}`, 55, 70);
-    doc.text(`${new Date(info.fecha || new Date()).toLocaleDateString()}`, 158, 60);
-    doc.text(`${idOrden}`, 158, 70);
+    doc.text(`${(info.proveedor || info.proveedorNombre || '').toUpperCase()}`, 50, 60);
+    doc.text(`${(info.condicionPago || 'Efectivo').toUpperCase()}`, 50, 70);
+    doc.text(`${new Date(info.fecha || new Date()).toLocaleDateString()}`, 155, 60);
+    doc.text(`${idOrden}`, 155, 70);
 
     const bodyTabla = typeof itemsFinales === 'string' ? JSON.parse(itemsFinales) : itemsFinales;
 
@@ -112,41 +125,50 @@ const OrdenesCompra = () => {
       body: bodyTabla.map(i => [
         i.producto, 
         i.cantidad, 
-        `$ ${Number(i.precio || 0).toLocaleString()}`, 
-        `$ ${(i.cantidad * (i.precio || 0)).toLocaleString()}`
+        `$ ${Number(i.precio || 0).toLocaleString('es-AR')}`, 
+        `$ ${(i.cantidad * (i.precio || 0)).toLocaleString('es-AR')}`
       ]),
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42] },
+      headStyles: { fillColor: [15, 23, 42], halign: 'center' },
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'right' },
+        3: { halign: 'right' }
+      },
       styles: { fontSize: 9 }
     });
 
     const total = bodyTabla.reduce((acc, i) => acc + (i.cantidad * (i.precio || 0)), 0);
     doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL ORDEN: $ ${total.toLocaleString()}`, 200, doc.lastAutoTable.finalY + 10, { align: 'right' });
+    doc.setFontSize(11);
+    doc.text(`TOTAL ORDEN: $ ${total.toLocaleString('es-AR')}`, 195, doc.lastAutoTable.finalY + 12, { align: 'right' });
 
-    // --- FIRMAS (CORREGIDO: DINÁMICO) ---
-    const firmaY = 255;
+    // --- FIRMAS ---
+    const firmaY = 250;
+    doc.setDrawColor(200);
     doc.line(30, firmaY, 85, firmaY); 
     doc.line(125, firmaY, 180, firmaY); 
     
     doc.setFontSize(9);
     doc.text("AUTORIZÓ", 57, firmaY + 5, { align: 'center' });
-    doc.text("RETIRA", 152, firmaY + 5, { align: 'center' });
+    doc.text("RETIRA / RECIBE", 152, firmaY + 5, { align: 'center' });
     
     doc.setFontSize(8); doc.setFont("helvetica", "normal");
-    // Aquí usamos los datos del formulario o del historial
-    doc.text(info.autoriza || '.......................', 57, firmaY + 10, { align: 'center' });
-    doc.text(info.retira || '.......................', 152, firmaY + 10, { align: 'center' });
+    doc.text(info.autoriza || '.......................', 57, firmaY + 12, { align: 'center' });
+    doc.text(info.retira || '.......................', 152, firmaY + 12, { align: 'center' });
 
     doc.save(`OC_${idOrden}.pdf`);
   };
 
   const enviar = async (e) => {
     e.preventDefault();
+    if (!form.proveedorNombre) return alert("Seleccione un proveedor");
+
     const datosParaGuardar = {
       ...form,
       proveedor: form.proveedorNombre, 
-      items: JSON.stringify(items) 
+      items: JSON.stringify(items),
+      fecha: new Date()
     };
 
     try {
@@ -154,7 +176,6 @@ const OrdenesCompra = () => {
       exportarPDF(items);
       alert("✅ Orden guardada correctamente.");
       cargarDatos();
-      // Limpiar pero mantener autorizador por defecto
       setItems([{ producto: '', cantidad: 1, precio: '' }]);
       setForm({ ...form, solicitudId: '', proveedorNombre: '', retira: '' });
     } catch (err) { 
@@ -165,26 +186,26 @@ const OrdenesCompra = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={styles.header}><Package size={24} /> Gestión de Orden de Compra</h2>
+        <h2 style={styles.header}><Package size={28} /> Gestión de Orden de Compra</h2>
         
         <form onSubmit={enviar}>
           <div style={styles.sectionVinculo}>
             <label style={styles.labelVinculo}><ClipboardList size={14}/> VINCULAR SOLICITUD APROBADA</label>
             <select style={styles.inputVinculo} value={form.solicitudId} onChange={e => manejarSeleccionSolicitud(e.target.value)}>
-              <option value="">-- Compra Directa --</option>
+              <option value="">-- Compra Directa (Sin solicitud previa) --</option>
               {solicitudesAprobadas.map(s => <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante}</option>)}
             </select>
           </div>
 
           <div style={styles.gridRow}>
-            <div>
+            <div style={styles.inputGroup}>
               <label style={styles.label}>Proveedor</label>
               <select style={styles.input} required value={form.proveedorNombre} onChange={e => setForm({ ...form, proveedorNombre: e.target.value })}>
-                <option value="">Seleccionar...</option>
+                <option value="">Seleccionar proveedor...</option>
                 {proveedores.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
               </select>
             </div>
-            <div>
+            <div style={styles.inputGroup}>
               <label style={styles.label}>Condición de Pago</label>
               <select style={styles.input} value={form.condicionPago} onChange={e => setForm({ ...form, condicionPago: e.target.value })}>
                 <option value="efectivo">Efectivo</option>
@@ -196,67 +217,59 @@ const OrdenesCompra = () => {
           </div>
 
           <div style={styles.sectionItems}>
-            <label style={styles.label}>Items de la Orden</label>
+            <label style={styles.label}>Detalle de Productos / Servicios</label>
             {items.map((item, index) => (
               <div key={index} style={styles.itemRow}>
-                <input style={{ ...styles.input, flex: 3 }} placeholder="Producto" required value={item.producto} 
+                <input style={styles.inputProd} placeholder="Producto" required value={item.producto} 
                   onChange={e => { const n = [...items]; n[index].producto = e.target.value; setItems(n); }} />
-                <input style={{ ...styles.input, flex: 0.8, textAlign: 'center' }} type="number" required value={item.cantidad} 
+                <input style={styles.inputCant} type="number" required value={item.cantidad} 
                   onChange={e => { const n = [...items]; n[index].cantidad = e.target.value; setItems(n); }} />
-                <input style={{ ...styles.input, flex: 1.2 }} type="number" step="0.01" placeholder="P. Unit" value={item.precio} 
+                <input style={styles.inputPrecio} type="number" step="0.01" placeholder="P. Unit" value={item.precio} 
                   onChange={e => { const n = [...items]; n[index].precio = e.target.value; setItems(n); }} />
-                <button type="button" onClick={() => setItems(items.filter((_, i) => i !== index))} style={styles.btnDeleteRow}><Trash2 size={14}/></button>
+                <button type="button" onClick={() => eliminarFila(index)} style={styles.btnDeleteRow}><Trash2 size={16}/></button>
               </div>
             ))}
-            <button type="button" onClick={agregarFila} style={styles.btnAdd}><Plus size={14}/> Agregar ítem</button>
+            <button type="button" onClick={agregarFila} style={styles.btnAdd}><Plus size={16}/> Agregar ítem</button>
           </div>
 
           <div style={styles.gridRow}>
-            <div>
+            <div style={styles.inputGroup}>
               <label style={styles.label}>Autorizado por</label>
-              <input 
-                style={styles.input} 
-                value={form.autoriza} 
-                placeholder="Nombre de quien autoriza"
-                onChange={e => setForm({ ...form, autoriza: e.target.value })} 
-              />
+              <input style={styles.input} value={form.autoriza} onChange={e => setForm({ ...form, autoriza: e.target.value })} />
             </div>
-            <div>
+            <div style={styles.inputGroup}>
               <label style={styles.label}>Persona que Retira / Recibe</label>
-              <input 
-                style={styles.input} 
-                placeholder="Nombre de quien retira" 
-                value={form.retira} 
-                onChange={e => setForm({ ...form, retira: e.target.value })} 
-              />
+              <input style={styles.input} placeholder="Nombre completo" value={form.retira} onChange={e => setForm({ ...form, retira: e.target.value })} />
             </div>
           </div>
 
-          <button type="submit" style={styles.btnSubmit}><Save size={20}/> GUARDAR Y GENERAR PDF</button>
+          <button type="submit" style={styles.btnSubmit}><Save size={20}/> GUARDAR Y GENERAR ORDEN PDF</button>
         </form>
 
         <div style={styles.historialContainer}>
-          <h3 style={{ marginBottom: '20px' }}>Historial Reciente</h3>
-          <table style={styles.table}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left' }}>
-                <th style={styles.th}>ID</th>
-                <th style={styles.th}>Proveedor</th>
-                <th style={styles.th}>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historial.map(h => (
-                <tr key={h.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={styles.td}>OC-{h.id}</td>
-                  <td style={styles.td}>{h.proveedor}</td>
-                  <td style={styles.td}>
-                    <button onClick={() => exportarPDF(h.items, h)} style={styles.btnMini}><Download size={14}/> Reimprimir</button>
-                  </td>
+          <h3 style={{ marginBottom: '20px', color: '#1e293b' }}>Historial de Órdenes</h3>
+          <div style={styles.tableResponsive}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left' }}>
+                  <th style={styles.th}>ID</th>
+                  <th style={styles.th}>Proveedor</th>
+                  <th style={styles.th}>Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {historial.map(h => (
+                  <tr key={h.id} style={styles.tr}>
+                    <td style={styles.td}>OC-{h.id}</td>
+                    <td style={styles.td}>{h.proveedor}</td>
+                    <td style={styles.td}>
+                      <button onClick={() => exportarPDF(h.items, h)} style={styles.btnMini}><Download size={14}/> PDF</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -264,25 +277,31 @@ const OrdenesCompra = () => {
 };
 
 const styles = {
-  container: { padding: '40px 20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
-  card: { background: 'white', borderRadius: '16px', padding: '35px', maxWidth: '1000px', margin: '0 auto', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' },
-  header: { display: 'flex', alignItems: 'center', gap: '15px', color: '#0f172a', marginBottom: '30px' },
-  sectionVinculo: { marginBottom: '25px', padding: '15px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' },
-  labelVinculo: { fontSize: '12px', fontWeight: 'bold', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '8px' },
-  inputVinculo: { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #3b82f6', outline: 'none' },
-  gridRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' },
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', width: '100%', fontSize: '14px', outline: 'none' },
-  sectionItems: { background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #e2e8f0' },
-  itemRow: { display: 'flex', gap: '10px', marginBottom: '10px' },
-  btnAdd: { padding: '10px', width: '100%', borderRadius: '8px', border: '1px dashed #94a3b8', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', color: '#64748b' },
-  btnSubmit: { width: '100%', padding: '16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '16px' },
-  btnDeleteRow: { background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '6px', padding: '0 12px', cursor: 'pointer' },
-  btnMini: { display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: '#334155', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
+  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
+  card: { background: 'white', borderRadius: '16px', padding: '25px', maxWidth: '1000px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
+  header: { display: 'flex', alignItems: 'center', gap: '12px', color: '#0f172a', marginBottom: '25px', fontSize: '22px' },
+  sectionVinculo: { marginBottom: '20px', padding: '15px', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe' },
+  labelVinculo: { fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '8px', textTransform: 'uppercase' },
+  inputVinculo: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #3b82f6', outline: 'none', fontSize: '14px' },
+  gridRow: { display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '15px' },
+  inputGroup: { flex: '1 1 300px' },
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', width: '100%', fontSize: '14px', boxSizing: 'border-box' },
+  sectionItems: { background: '#f8fafc', padding: '15px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #e2e8f0' },
+  itemRow: { display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' },
+  inputProd: { flex: '2 1 200px', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' },
+  inputCant: { flex: '0.5 1 60px', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', textAlign: 'center' },
+  inputPrecio: { flex: '1 1 100px', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' },
+  btnDeleteRow: { background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '8px', padding: '12px', cursor: 'pointer' },
+  btnAdd: { padding: '12px', width: '100%', borderRadius: '8px', border: '1px dashed #94a3b8', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', color: '#64748b', background: 'none' },
+  btnSubmit: { width: '100%', padding: '16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '16px', marginTop: '10px' },
+  btnMini: { display: 'flex', alignItems: 'center', gap: '5px', padding: '8px 15px', background: '#334155', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' },
   label: { fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '6px', display: 'block', textTransform: 'uppercase' },
-  historialContainer: { marginTop: '50px', borderTop: '2px solid #f1f5f9', paddingTop: '30px' },
+  historialContainer: { marginTop: '40px', borderTop: '2px solid #f1f5f9', paddingTop: '20px' },
+  tableResponsive: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { padding: '12px', fontSize: '12px', color: '#64748b', fontWeight: 'bold' },
-  td: { padding: '12px', fontSize: '14px', color: '#334155' }
+  th: { padding: '12px', fontSize: '12px', color: '#64748b', fontWeight: 'bold', borderBottom: '2px solid #f1f5f9' },
+  td: { padding: '12px', fontSize: '14px', color: '#334155', borderBottom: '1px solid #f1f5f9' },
+  tr: { transition: 'background 0.2s' }
 };
 
 export default OrdenesCompra;
