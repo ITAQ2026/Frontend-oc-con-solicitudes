@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Wrench, Plus, Download, Gauge, User, FileText, Loader2, ClipboardList } from 'lucide-react';
+import { Wrench, Gauge, User, FileText, Loader2, ClipboardList, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -38,44 +38,113 @@ const OrdenesTrabajo = () => {
     if (!form.vehiculoId) return alert("Seleccione un vehículo");
     setLoading(true);
 
+    // Mapeo exacto al CreateOrdenTrabajoDto del backend
     const payload = {
       falla: form.descripcion_falla.trim(),
-      tareas: "PENDIENTE",
+      tareas: "PENDIENTE DE REVISIÓN",
       kilometraje: Number(form.kilometraje),
       responsable: form.responsable.trim().toUpperCase(),
-      repuestos: {},
+      repuestos: [], 
       vehiculoId: Number(form.vehiculoId)
     };
 
     try {
       await api.post('/api/ordenes-trabajo', payload);
-      alert("✅ Orden registrada");
+      alert("✅ Orden de Trabajo registrada con éxito");
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) {
-      alert("Error al guardar la OT");
+      console.error(err);
+      alert(err.response?.data?.message || "Error al guardar la OT");
     } finally {
       setLoading(false);
     }
   };
 
+  // --- DISEÑO PROFESIONAL DE PDF (ESTILO ALPHA QUÍMICA) ---
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    const patente = ot.vehiculo?.patente || 'S-P';
-    doc.setFontSize(18);
-    doc.text("ORDEN DE TRABAJO - ALPHA QUÍMICA", 14, 20);
+    const primaryColor = [15, 23, 42]; // Slate-900
+    const margin = 14;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // 1. Encabezado Oscuro
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, pageWidth, 45, 'F'); 
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("ALPHA QUÍMICA S.A.", margin, 20);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Mantenimiento de Flota y Logística", margin, 28);
+    doc.text("CUIT: 30-60968636-3", margin, 33);
+
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text("ORDEN DE TRABAJO", pageWidth - margin, 25, { align: 'right' });
+    doc.setFontSize(14);
+    doc.text(`# OT-${String(ot.id).padStart(5, '0')}`, pageWidth - margin, 35, { align: 'right' });
+
+    // 2. Información de Recepción
+    let currentY = 55;
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("DATOS DE LA UNIDAD", margin, currentY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Fecha Emisión: ${new Date(ot.createdAt || Date.now()).toLocaleDateString()}`, margin, currentY + 7);
+    doc.text(`Estado: ACTIVA`, pageWidth - margin, currentY + 7, { align: 'right' });
+
+    // 3. Tabla Principal
     autoTable(doc, {
-      startY: 30,
-      head: [['Campo', 'Detalle']],
+      startY: currentY + 12,
+      head: [['ESPECIFICACIÓN', 'DETALLE']],
       body: [
-        ['OT #', String(ot.id).padStart(5, '0')],
-        ['Vehículo', patente],
-        ['KM', ot.kilometraje],
-        ['Responsable', ot.responsable],
-        ['Falla', ot.falla || ot.descripcion_falla]
+        ['DOMINIO / PATENTE', (ot.vehiculo?.patente || 'N/A').toUpperCase()],
+        ['VEHÍCULO', (ot.vehiculo?.modelo || 'N/A').toUpperCase()],
+        ['KILOMETRAJE', `${Number(ot.kilometraje).toLocaleString()} KM`],
+        ['CHOFER / RESPONSABLE', ot.responsable.toUpperCase()],
+        ['REQUERIMIENTO PRINCIPAL', ot.descripcion_falla || ot.falla],
       ],
+      theme: 'striped',
+      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { cellPadding: 5, fontSize: 10 },
+      columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold', fillColor: [241, 245, 249] } }
     });
-    doc.save(`OT_${patente}.pdf`);
+
+    currentY = doc.lastAutoTable.finalY + 15;
+
+    // 4. Sección de Taller (Líneas para completar)
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, currentY, pageWidth - (margin * 2), 10, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.text("INFORME TÉCNICO DE REPARACIÓN (Uso exclusivo Taller)", margin + 5, currentY + 7);
+
+    doc.setFont("helvetica", "normal");
+    doc.text("TAREAS REALIZADAS / DIAGNÓSTICO FINAL:", margin, currentY + 20);
+    
+    doc.setDrawColor(203, 213, 225);
+    for (let i = 0; i < 5; i++) {
+      doc.line(margin, currentY + 28 + (i * 9), pageWidth - margin, currentY + 28 + (i * 9));
+    }
+
+    // 5. Pie de página y Firmas
+    const footerY = 265;
+    doc.setDrawColor(30, 41, 59);
+    doc.line(margin + 10, footerY, margin + 70, footerY); 
+    doc.line(pageWidth - margin - 70, footerY, pageWidth - margin - 10, footerY);
+    
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("FIRMA Y ACLARACIÓN CHOFER", margin + 40, footerY + 5, { align: 'center' });
+    doc.text("RESPONSABLE DE TALLER", pageWidth - margin - 40, footerY + 5, { align: 'center' });
+
+    doc.save(`OT_${ot.vehiculo?.patente || 'SP'}_${ot.id}.pdf`);
   };
 
   return (
@@ -84,22 +153,21 @@ const OrdenesTrabajo = () => {
         <div style={styles.headerArea}>
           <div style={styles.iconCircle}><Wrench size={24} color="white" /></div>
           <div>
-            <h2 style={styles.title}>Gestión de Mantenimiento</h2>
-            <p style={styles.subtitle}>Apertura de Orden de Trabajo</p>
+            <h2 style={styles.title}>Alpha Química - Mantenimiento</h2>
+            <p style={styles.subtitle}>Gestión de Órdenes de Trabajo</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.formGrid}>
-          {/* USAMOS FLEX-BASIS PARA CONTROLAR EL ANCHO SIN DESBORDAR */}
           <div style={styles.inputGroup}>
-            <label style={styles.label}><ClipboardList size={14}/> Vehículo</label>
+            <label style={styles.label}><ClipboardList size={14}/> Unidad / Vehículo</label>
             <select 
               style={styles.input} 
               value={form.vehiculoId} 
               onChange={e => setForm({...form, vehiculoId: e.target.value})} 
               required
             >
-              <option value="">-- Seleccionar --</option>
+              <option value="">Seleccione vehículo...</option>
               {vehiculos.map(v => (
                 <option key={v.id} value={v.id}>{v.patente} - {v.modelo}</option>
               ))}
@@ -107,10 +175,11 @@ const OrdenesTrabajo = () => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}><Gauge size={14}/> Kilometraje</label>
+            <label style={styles.label}><Gauge size={14}/> Kilometraje Actual</label>
             <input 
               style={styles.input} 
               type="number" 
+              placeholder="Ej: 125000"
               value={form.kilometraje} 
               onChange={e => setForm({...form, kilometraje: e.target.value})} 
               required 
@@ -118,10 +187,11 @@ const OrdenesTrabajo = () => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}><User size={14}/> Chofer</label>
+            <label style={styles.label}><User size={14}/> Responsable / Chofer</label>
             <input 
               style={styles.input} 
               type="text" 
+              placeholder="Nombre completo"
               value={form.responsable} 
               onChange={e => setForm({...form, responsable: e.target.value})} 
               required 
@@ -129,9 +199,10 @@ const OrdenesTrabajo = () => {
           </div>
 
           <div style={styles.fullWidthGroup}>
-            <label style={styles.label}><FileText size={14}/> Detalle de la Falla</label>
+            <label style={styles.label}><FileText size={14}/> Descripción de la Falla o Pedido</label>
             <textarea 
               style={styles.textarea} 
+              placeholder="Describa el problema o el mantenimiento requerido..."
               value={form.descripcion_falla} 
               onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
               required 
@@ -139,30 +210,36 @@ const OrdenesTrabajo = () => {
           </div>
 
           <button type="submit" style={styles.btnSubmit} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : "REGISTRAR APERTURA"}
+            {loading ? <Loader2 className="animate-spin" /> : "REGISTRAR APERTURA DE OT"}
           </button>
         </form>
 
         <div style={styles.tableSection}>
-          <h3 style={styles.tableTitle}>Historial Reciente</h3>
+          <h3 style={styles.tableTitle}>Historial de Órdenes</h3>
           <div style={styles.tableWrapper}>
             <table style={styles.table}>
               <thead>
                 <tr>
-                  <th style={styles.th}>OT</th>
-                  <th style={styles.th}>Vehículo</th>
-                  <th style={styles.th}>Chofer</th>
-                  <th style={styles.th}>Acción</th>
+                  <th style={styles.th}>OT #</th>
+                  <th style={styles.th}>Patente</th>
+                  <th style={styles.th}>Responsable</th>
+                  <th style={styles.th}>Falla</th>
+                  <th style={styles.th}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {ordenes.map(ot => (
                   <tr key={ot.id} style={styles.tdRow}>
-                    <td style={styles.td}>{ot.id}</td>
+                    <td style={styles.td}><b>{String(ot.id).padStart(4, '0')}</b></td>
                     <td style={styles.td}>{ot.vehiculo?.patente}</td>
                     <td style={styles.td}>{ot.responsable}</td>
+                    <td style={{ ...styles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ot.descripcion_falla || ot.falla}
+                    </td>
                     <td style={styles.td}>
-                      <button onClick={() => descargarOT(ot)} style={styles.btnPdf}>PDF</button>
+                      <button onClick={() => descargarOT(ot)} style={styles.btnPdf}>
+                        <Download size={14} /> PDF
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -176,93 +253,27 @@ const OrdenesTrabajo = () => {
 };
 
 const styles = {
-  container: { 
-    padding: '20px', 
-    backgroundColor: '#f1f5f9', 
-    minHeight: '100vh', 
-    boxSizing: 'border-box' // Fundamental para que el padding no sume ancho
-  },
-  card: { 
-    background: 'white', 
-    borderRadius: '16px', 
-    padding: 'clamp(15px, 5%, 30px)', 
-    maxWidth: '1000px', 
-    margin: '0 auto', 
-    boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-    boxSizing: 'border-box',
-    overflow: 'hidden' 
-  },
-  headerArea: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' },
-  iconCircle: { backgroundColor: '#1e293b', padding: '12px', borderRadius: '12px' },
-  title: { fontSize: '22px', fontWeight: '800', margin: 0 },
+  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box' },
+  card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1100px', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' },
+  headerArea: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' },
+  iconCircle: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '12px' },
+  title: { fontSize: '24px', fontWeight: '800', margin: 0, color: '#0f172a' },
   subtitle: { fontSize: '14px', color: '#64748b', margin: 0 },
-  
-  // FORMULARIO CORREGIDO
-  formGrid: { 
-    display: 'flex', 
-    flexWrap: 'wrap', // Permite que los cuadros bajen si no hay espacio
-    gap: '15px', 
-    backgroundColor: '#f8fafc', 
-    padding: '20px', 
-    borderRadius: '12px',
-    boxSizing: 'border-box',
-    width: '100%' 
-  },
-  inputGroup: { 
-    flex: '1 1 200px', // Crece y se achica, pero intenta medir 200px
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: '5px',
-    boxSizing: 'border-box' 
-  },
-  fullWidthGroup: { 
-    flex: '1 1 100%', 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: '5px',
-    boxSizing: 'border-box'
-  },
-  label: { fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: '#475569' },
-  input: { 
-    width: '100%', 
-    padding: '10px', 
-    borderRadius: '8px', 
-    border: '1px solid #cbd5e1',
-    boxSizing: 'border-box' // Evita que el padding lo saque afuera
-  },
-  textarea: { 
-    width: '100%', 
-    padding: '10px', 
-    borderRadius: '8px', 
-    border: '1px solid #cbd5e1', 
-    minHeight: '80px',
-    boxSizing: 'border-box'
-  },
-  btnSubmit: { 
-    width: '100%', 
-    backgroundColor: '#0f172a', 
-    color: 'white', 
-    padding: '12px', 
-    borderRadius: '8px', 
-    fontWeight: '700', 
-    cursor: 'pointer',
-    marginTop: '10px'
-  },
-
-  // TABLA CORREGIDA
-  tableSection: { marginTop: '30px', width: '100%' },
-  tableTitle: { fontSize: '18px', fontWeight: '700', marginBottom: '15px' },
-  tableWrapper: { 
-    width: '100%', 
-    overflowX: 'auto', // Scroll lateral solo si es necesario
-    borderRadius: '8px', 
-    border: '1px solid #e2e8f0' 
-  },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: '500px' },
-  th: { padding: '12px', textAlign: 'left', backgroundColor: '#f8fafc', fontSize: '12px', color: '#64748b' },
-  tdRow: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '12px', fontSize: '14px' },
-  btnPdf: { padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', border: '1px solid #cbd5e1' }
+  formGrid: { display: 'flex', flexWrap: 'wrap', gap: '20px', backgroundColor: '#f8fafc', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0' },
+  inputGroup: { flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '8px' },
+  fullWidthGroup: { flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' },
+  label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#475569', display: 'flex', alignItems: 'center', gap: '5px' },
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
+  textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', minHeight: '100px', fontSize: '14px', resize: 'vertical' },
+  btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none', transition: 'all 0.2s' },
+  tableSection: { marginTop: '40px' },
+  tableTitle: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#1e293b' },
+  tableWrapper: { overflowX: 'auto', borderRadius: '12px', border: '1px solid #e2e8f0' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  th: { padding: '15px', textAlign: 'left', backgroundColor: '#f1f5f9', fontSize: '12px', color: '#475569', textTransform: 'uppercase' },
+  tdRow: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' },
+  td: { padding: '15px', fontSize: '14px', color: '#1e293b' },
+  btnPdf: { display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '12px', fontWeight: '600' }
 };
 
 export default OrdenesTrabajo;
