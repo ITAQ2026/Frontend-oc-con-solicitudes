@@ -56,9 +56,12 @@ const descargarPDF = (r) => {
     doc.setFontSize(8);
     doc.setTextColor(100);
     
-    // Textos debajo de las líneas
-    doc.text("FIRMA ", margin + 40, firmaY + 5, { align: 'center' });
+    // Textos descriptivos debajo de las líneas
+    doc.setFont("helvetica", "normal");
+    doc.text("FIRMA EMISOR", margin + 40, firmaY + 5, { align: 'center' });
+    doc.text("FIRMA RECEPTOR", 160, firmaY + 5, { align: 'center' });
     
+    // Nombres de los responsables
     doc.setFont("helvetica", "bold");
     doc.text(r.emisor.toUpperCase(), margin + 40, firmaY + 10, { align: 'center' });
     doc.text(r.receptor.toUpperCase(), 160, firmaY + 10, { align: 'center' });
