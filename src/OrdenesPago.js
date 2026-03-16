@@ -269,4 +269,4 @@ const styles = {
   td: { padding: '12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', color: '#1e293b' }
 };
 
-export default OrdenesPago;
+export default OrdenesPago;    
