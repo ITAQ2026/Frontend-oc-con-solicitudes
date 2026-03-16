@@ -43,10 +43,9 @@ const OrdenesPago = () => {
     const totalCalculado = p.monto || (p.cantidad * p.precioUnitario);
     
     // --- CABECERA ---
-    doc.setFillColor(30, 41, 59); // Color oscuro profesional
+    doc.setFillColor(30, 41, 59); 
     doc.rect(0, 0, 210, 40, 'F');
     
-    // Espacio para el logo (ajustado para que no se deforme)
     try { 
       doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
     } catch (e) { console.warn("Logo no cargado"); }
@@ -95,18 +94,23 @@ const OrdenesPago = () => {
       headStyles: { fillColor: [71, 85, 105] }
     });
 
-    // --- FIRMAS ---
-    const finalY = 250;
-    doc.setDrawColor(200);
-    doc.line(15, finalY, 80, finalY); 
-    doc.line(130, finalY, 195, finalY);
+    // --- SECCIÓN DE FIRMA (ABAJO A LA DERECHA) ---
+    const finalY = 245;
+    const margenDerecho = 195;
+    const anchoFirma = 70;
+    const inicioFirmaX = margenDerecho - anchoFirma; // Comienza en 125 para terminar en 195
+
+    doc.setDrawColor(150);
+    doc.line(inicioFirmaX, finalY, margenDerecho, finalY); // Línea de firma
     
     doc.setFontSize(9);
-    doc.text("RECIBÍ CONFORME", 162, finalY + 5,  { align: 'right' });
+    doc.setFont("helvetica", "bold");
+    doc.text("RECIBÍ CONFORME", margenDerecho, finalY + 7, { align: 'right' });
     
     doc.setFontSize(8);
-    doc.text("ACLARACIÓN: .........................", 15, finalY + 15,  { align: 'right' });
-    doc.text("DNI: .........................", 15, finalY + 22,  { align: 'right' });
+    doc.setFont("helvetica", "normal");
+    doc.text("ACLARACIÓN: ........................................", margenDerecho, finalY + 16, { align: 'right' });
+    doc.text("DNI: ........................................", margenDerecho, finalY + 23, { align: 'right' });
 
     doc.save(`Pago_${idFormateado}_${p.proveedorNombre}.pdf`);
   };
@@ -117,9 +121,13 @@ const OrdenesPago = () => {
 
     try {
       const montoTotal = Number(pago.cantidad) * Number(pago.precioUnitario);
-      await api.post('/api/ordenes-pago', { ...pago, monto: montoTotal });
+      const res = await api.post('/api/ordenes-pago', { ...pago, monto: montoTotal });
       
       alert("✅ Orden de Pago registrada con éxito");
+      
+      // Generar PDF inmediatamente con los datos devueltos (incluyendo el ID real)
+      generarPDF(res.data);
+
       setPago({ 
         proveedorNombre: '', productoServicio: '', cantidad: 1, 
         precioUnitario: '', caja: '', metodoPago: 'Transferencia', referencia: '' 
