@@ -10,7 +10,7 @@ const Recibos = () => {
   const [form, setForm] = useState({ 
     emisor: 'Alpha Química S.A.', 
     receptor: '', 
-    concepto: '', 
+    concept: '', 
     monto: '', 
     condicion_pago: 'Transferencia' 
   });
@@ -53,69 +53,81 @@ const Recibos = () => {
 
   const descargarPDF = (r) => {
     const doc = new jsPDF();
-    const primaryColor = [15, 23, 42];
+    
+    // --- COLORES CLAROS PARA IMPRESIÓN ---
+    const lightBlue = [224, 242, 254]; // Sky-100
+    const textColor = [0, 0, 0];      // Negro
     const margin = 20;
 
-    // Encabezado
-    doc.setFillColor(...primaryColor);
+    // Encabezado con fondo claro
+    doc.setFillColor(...lightBlue);
     doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
+    
+    // Títulos en Negro
+    doc.setTextColor(...textColor);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("ALPHA QUÍMICA S.R.L.", 105, 20, { align: 'center' });
     
-    doc.setFontSize(10);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
     doc.text("COMPROBANTE DE PAGO NO VÁLIDO COMO FACTURA", 105, 30, { align: 'center' });
 
     // Info Recibo
-    doc.setTextColor(...primaryColor);
     doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
     doc.text(`RECIBO DE CAJA R-${String(r.id).padStart(5, '0')}`, margin, 55);
     
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString('es-AR')}`, 150, 55);
+    doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString('es-AR')}`, 190, 55, { align: 'right' });
 
-    // Tabla de Contenido
+    // Tabla de Contenido ajustada
     autoTable(doc, {
       startY: 65,
       head: [['Concepto', 'Información']],
       body: [
         ['EMISOR / PAGADOR', r.emisor.toUpperCase()],
         ['RECEPTOR / BENEFICIARIO', r.receptor.toUpperCase()],
-        ['MOTIVO DEL PAGO', r.concepto],
+        ['MOTIVO DEL PAGO', r.concepto.toUpperCase()],
         ['MÉTODO UTILIZADO', r.condicion_pago.toUpperCase()],
         ['MONTO TOTAL', `$ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
       ],
-      theme: 'striped',
-      headStyles: { fillColor: primaryColor },
-      styles: { fontSize: 10, cellPadding: 5 }
+      theme: 'grid',
+      headStyles: { 
+        fillColor: lightBlue, 
+        textColor: textColor,
+        lineWidth: 0.1,
+        lineColor: [200, 200, 200]
+      },
+      styles: { fontSize: 10, cellPadding: 5, textColor: textColor }
     });
 
     const finalY = doc.lastAutoTable.finalY + 15;
     
-    // Cuadro de Total
-    doc.setFillColor(245, 247, 250);
+    // Cuadro de Total más sobrio
+    doc.setFillColor(248, 250, 252);
     doc.rect(margin, finalY, 170, 15, 'F');
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
     doc.text(`TOTAL RECIBIDO: $ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 105, finalY + 10, { align: 'center' });
 
-    // SECCIÓN DE FIRMAS
+    // SECCIÓN DE FIRMAS (Líneas negras finas)
     const firmaY = finalY + 45;
-    doc.setDrawColor(200);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
     
     doc.line(margin + 10, firmaY, margin + 70, firmaY); // Línea Emisor
     doc.line(130, firmaY, 190, firmaY); // Línea Receptor
 
     doc.setFontSize(8);
-    doc.setTextColor(100);
     doc.setFont("helvetica", "normal");
     doc.text("FIRMA", margin + 40, firmaY + 5, { align: 'center' });
-    
+    doc.text("FIRMA", 160, firmaY + 5, { align: 'center' });
     
     doc.setFont("helvetica", "bold");
-    doc.text(r.emisor.toUpperCase(), margin + 40, firmaY + 10, { align: 'center' });
-    doc.text(r.receptor.toUpperCase(), 160, firmaY + 10, { align: 'center' });
+    doc.text(r.emisor.toUpperCase(), margin + 40, firmaY + 12, { align: 'center' });
+    doc.text(r.receptor.toUpperCase(), 160, firmaY + 12, { align: 'center' });
 
     doc.save(`Recibo_Alpha_${r.id}.pdf`);
   };
@@ -195,7 +207,7 @@ const Recibos = () => {
 };
 
 const styles = {
-  container: { padding: '20px 10px', backgroundColor: '#f8fafc', minHeight: '100vh', boxSizing: 'border-box' },
+  container: { padding: '20px 10px', backgroundColor: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box' },
   card: { 
     background: 'white', borderRadius: '16px', padding: 'clamp(15px, 5%, 30px)', 
     maxWidth: '950px', margin: '0 auto', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', boxSizing: 'border-box' 
