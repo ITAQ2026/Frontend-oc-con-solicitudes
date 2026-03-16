@@ -85,9 +85,10 @@ const OrdenesCompra = () => {
     doc.rect(0, 0, 210, 45, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22); doc.setFont("helvetica", "bold");
-    doc.text("ALPHA QUÍMICA S.A.", margin, 25);
+    doc.text("ALPHA QUÍMICA S.R.L.", margin, 25);
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text("CUIT: 30-60968636-3 | Villa María, Córdoba", margin, 33);
+    doc.text("CUIT: 30-60968636-3 ", margin, 33);
+    doc.setFontSize(20); doc.text("Av Brigadier Gral San Martin 235 - Villa María, Córdoba", margin, 33);
     doc.setFontSize(20);
     doc.text("ORDEN DE COMPRA", 195, 25, { align: 'right' });
     doc.text(`${idRef}`, 195, 35, { align: 'right' });
@@ -142,7 +143,7 @@ const OrdenesCompra = () => {
 
     if (info.direccionDescarga && info.direccionDescarga.trim() !== "") {
         doc.setFont("helvetica", "bold");
-        doc.text("DIRECCIÓN DE DESCARGA:", margin, nextY);
+        doc.text("DIRECCIÓN DE ENTREGA:", margin, nextY);
         doc.setFont("helvetica", "normal");
         doc.text(info.direccionDescarga.toUpperCase(), margin + 55, nextY);
         nextY += 8;

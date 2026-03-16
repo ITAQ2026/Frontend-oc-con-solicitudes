@@ -55,7 +55,6 @@ const OrdenesPago = () => {
     doc.setFontSize(20);
     doc.text("ORDEN DE PAGO", 200, 22, { align: 'right' });
     doc.setFontSize(9);
-    doc.text("ALPHA QUÍMICA S.R.L.", 200, 30, { align: 'right' });
     doc.text("COMPROBANTE INTERNO DE EGRESO", 200, 35, { align: 'right' });
     
     // --- DATOS PRINCIPALES ---
@@ -103,12 +102,11 @@ const OrdenesPago = () => {
     doc.line(130, finalY, 195, finalY);
     
     doc.setFontSize(9);
-    doc.text("FIRMA AUTORIZADA", 47, finalY + 5, { align: 'center' });
-    doc.text("RECIBÍ CONFORME", 162, finalY + 5, { align: 'center' });
+    doc.text("RECIBÍ CONFORME", 162, finalY + 5,  { align: 'right' });
     
     doc.setFontSize(8);
-    doc.text("ACLARACIÓN: .........................", 15, finalY + 15);
-    doc.text("DNI: .........................", 15, finalY + 22);
+    doc.text("ACLARACIÓN: .........................", 15, finalY + 15,  { align: 'right' });
+    doc.text("DNI: .........................", 15, finalY + 22,  { align: 'right' });
 
     doc.save(`Pago_${idFormateado}_${p.proveedorNombre}.pdf`);
   };
