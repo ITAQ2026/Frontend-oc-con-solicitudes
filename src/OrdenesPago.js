@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Landmark, FileText, Download, Send, History, Loader2 } from 'lucide-react';
+import { Landmark, Download, Send, History, Loader2 } from 'lucide-react';
 
 const OrdenesPago = () => {
-  // Base64 del logo (puedes reemplazarlo por el tuyo)
   const LOGO_ALPHA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; 
 
   const [proveedores, setProveedores] = useState([]);
@@ -43,18 +42,20 @@ const OrdenesPago = () => {
     const idFormateado = String(p.id).padStart(4, '0');
     const totalCalculado = p.monto || (p.cantidad * p.precioUnitario);
     
-    // --- COLOR AZUL ACERO (No se empasta al imprimir) ---
-    const primaryColor = [71, 85, 105]; 
+    // --- NUEVA PALETA DE COLORES CLAROS ---
+    const lightBlue = [224, 242, 254]; // Azul muy claro (Sky-100)
+    const textColor = [0, 0, 0];      // Negro puro para máxima legibilidad
 
     // --- CABECERA ---
-    doc.setFillColor(...primaryColor);
+    doc.setFillColor(...lightBlue);
     doc.rect(0, 0, 210, 40, 'F');
     
     try { 
       doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
     } catch (e) { console.warn("Logo no disponible"); }
 
-    doc.setTextColor(255, 255, 255);
+    // Títulos en Negro
+    doc.setTextColor(...textColor);
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
     doc.text("ORDEN DE PAGO", 200, 22, { align: 'right' });
@@ -63,7 +64,6 @@ const OrdenesPago = () => {
     doc.text("COMPROBANTE INTERNO DE EGRESO", 200, 35, { align: 'right' });
     
     // --- DATOS PRINCIPALES ---
-    doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text(`NRO ORDEN: ${idFormateado}`, 15, 50);
@@ -82,8 +82,14 @@ const OrdenesPago = () => {
         `$ ${Number(totalCalculado).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
       ]],
       theme: 'grid',
-      headStyles: { fillColor: primaryColor, halign: 'center' },
-      styles: { fontSize: 9 },
+      headStyles: { 
+        fillColor: lightBlue, 
+        textColor: textColor, 
+        halign: 'center',
+        lineWidth: 0.1,
+        lineColor: [200, 200, 200]
+      },
+      styles: { fontSize: 9, textColor: textColor },
       columnStyles: {
         2: { halign: 'center' },
         3: { halign: 'right' },
@@ -97,16 +103,17 @@ const OrdenesPago = () => {
       head: [["MÉTODO DE PAGO", "REFERENCIA / NRO OPERACIÓN"]],
       body: [[p.metodoPago.toUpperCase(), (p.referencia || "SIN REFERENCIA").toUpperCase()]],
       theme: 'striped',
-      headStyles: { fillColor: [100, 116, 139] }
+      headStyles: { fillColor: [241, 245, 249], textColor: textColor }
     });
 
     // --- SECCIÓN DE FIRMA (ABAJO A LA DERECHA) ---
     const finalY = 245;
     const margenDerecho = 195;
-    const anchoFirma = 70;
+    const anchoFirma = 75;
     const inicioFirmaX = margenDerecho - anchoFirma;
 
-    doc.setDrawColor(200);
+    doc.setDrawColor(0); // Línea negra fina
+    doc.setLineWidth(0.5);
     doc.line(inicioFirmaX, finalY, margenDerecho, finalY); 
     
     doc.setFontSize(9);
@@ -115,8 +122,8 @@ const OrdenesPago = () => {
     
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text("ACLARACIÓN: ........................................", margenDerecho, finalY + 16, { align: 'right' });
-    doc.text("DNI: ........................................", margenDerecho, finalY + 23, { align: 'right' });
+    doc.text("ACLARACIÓN: ...................................................", margenDerecho, finalY + 16, { align: 'right' });
+    doc.text("DNI: ...................................................", margenDerecho, finalY + 23, { align: 'right' });
 
     doc.save(`OrdenPago_Alpha_${idFormateado}.pdf`);
   };
@@ -150,7 +157,6 @@ const OrdenesPago = () => {
       <div style={styles.card}>
         <h2 style={styles.header}><Landmark size={24} /> Nueva Orden de Pago</h2>
         <form onSubmit={enviar}>
-          
           <div style={styles.gridRow}>
             <div style={{flex: '1 1 100%'}}>
                <label style={styles.label}>Producto / Servicio</label>
@@ -269,4 +275,4 @@ const styles = {
   td: { padding: '12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', color: '#1e293b' }
 };
 
-export default OrdenesPago;    
+export default OrdenesPago;
