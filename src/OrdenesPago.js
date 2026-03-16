@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Landmark, FileText, Download, Send, History } from 'lucide-react';
+import { Landmark, FileText, Download, Send, History, Loader2 } from 'lucide-react';
 
 const OrdenesPago = () => {
-  // Cambia este string por tu Base64 real del logo
+  // Base64 del logo (puedes reemplazarlo por el tuyo)
   const LOGO_ALPHA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; 
 
   const [proveedores, setProveedores] = useState([]);
   const [historial, setHistorial] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [pago, setPago] = useState({
     proveedorNombre: '',
     productoServicio: '', 
@@ -31,7 +32,7 @@ const OrdenesPago = () => {
         api.get('/api/ordenes-pago')
       ]);
       setProveedores(resProv.data || []);
-      setHistorial(resPagos.data || []);
+      setHistorial(resPagos.data?.sort((a, b) => b.id - a.id) || []);
     } catch (err) { 
       console.error("Error cargando datos de pagos:", err); 
     }
@@ -42,18 +43,23 @@ const OrdenesPago = () => {
     const idFormateado = String(p.id).padStart(4, '0');
     const totalCalculado = p.monto || (p.cantidad * p.precioUnitario);
     
+    // --- COLOR AZUL ACERO (No se empasta al imprimir) ---
+    const primaryColor = [71, 85, 105]; 
+
     // --- CABECERA ---
-    doc.setFillColor(30, 41, 59); 
+    doc.setFillColor(...primaryColor);
     doc.rect(0, 0, 210, 40, 'F');
     
     try { 
       doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
-    } catch (e) { console.warn("Logo no cargado"); }
+    } catch (e) { console.warn("Logo no disponible"); }
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
     doc.text("ORDEN DE PAGO", 200, 22, { align: 'right' });
     doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
     doc.text("COMPROBANTE INTERNO DE EGRESO", 200, 35, { align: 'right' });
     
     // --- DATOS PRINCIPALES ---
@@ -61,7 +67,7 @@ const OrdenesPago = () => {
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text(`NRO ORDEN: ${idFormateado}`, 15, 50);
-    doc.text(`FECHA: ${new Date(p.fecha || p.fecha_creacion).toLocaleDateString()}`, 15, 56);
+    doc.text(`FECHA: ${new Date(p.fecha || p.fecha_creacion).toLocaleDateString('es-AR')}`, 15, 56);
     doc.text(`CAJA/ORIGEN: ${(p.caja || "GENERAL").toUpperCase()}`, 15, 62);
     
     // --- TABLA DE DETALLE ---
@@ -72,11 +78,11 @@ const OrdenesPago = () => {
         p.productoServicio.toUpperCase(),
         p.proveedorNombre.toUpperCase(), 
         p.cantidad, 
-        `$ ${Number(p.precioUnitario || 0).toLocaleString('es-AR')}`, 
-        `$ ${Number(totalCalculado).toLocaleString('es-AR')}`
+        `$ ${Number(p.precioUnitario || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 
+        `$ ${Number(totalCalculado).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
       ]],
       theme: 'grid',
-      headStyles: { fillColor: [30, 41, 59], halign: 'center' },
+      headStyles: { fillColor: primaryColor, halign: 'center' },
       styles: { fontSize: 9 },
       columnStyles: {
         2: { halign: 'center' },
@@ -91,17 +97,17 @@ const OrdenesPago = () => {
       head: [["MÉTODO DE PAGO", "REFERENCIA / NRO OPERACIÓN"]],
       body: [[p.metodoPago.toUpperCase(), (p.referencia || "SIN REFERENCIA").toUpperCase()]],
       theme: 'striped',
-      headStyles: { fillColor: [71, 85, 105] }
+      headStyles: { fillColor: [100, 116, 139] }
     });
 
     // --- SECCIÓN DE FIRMA (ABAJO A LA DERECHA) ---
     const finalY = 245;
     const margenDerecho = 195;
     const anchoFirma = 70;
-    const inicioFirmaX = margenDerecho - anchoFirma; // Comienza en 125 para terminar en 195
+    const inicioFirmaX = margenDerecho - anchoFirma;
 
-    doc.setDrawColor(150);
-    doc.line(inicioFirmaX, finalY, margenDerecho, finalY); // Línea de firma
+    doc.setDrawColor(200);
+    doc.line(inicioFirmaX, finalY, margenDerecho, finalY); 
     
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
@@ -112,20 +118,19 @@ const OrdenesPago = () => {
     doc.text("ACLARACIÓN: ........................................", margenDerecho, finalY + 16, { align: 'right' });
     doc.text("DNI: ........................................", margenDerecho, finalY + 23, { align: 'right' });
 
-    doc.save(`Pago_${idFormateado}_${p.proveedorNombre}.pdf`);
+    doc.save(`OrdenPago_Alpha_${idFormateado}.pdf`);
   };
 
   const enviar = async (e) => {
     e.preventDefault();
     if (!pago.proveedorNombre) return alert("Seleccione un proveedor");
+    setLoading(true);
 
     try {
       const montoTotal = Number(pago.cantidad) * Number(pago.precioUnitario);
       const res = await api.post('/api/ordenes-pago', { ...pago, monto: montoTotal });
       
       alert("✅ Orden de Pago registrada con éxito");
-      
-      // Generar PDF inmediatamente con los datos devueltos (incluyendo el ID real)
       generarPDF(res.data);
 
       setPago({ 
@@ -134,7 +139,9 @@ const OrdenesPago = () => {
       });
       cargarDatos();
     } catch (err) { 
-      alert("Error al registrar el pago"); 
+      alert("❌ Error al registrar el pago"); 
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -203,8 +210,8 @@ const OrdenesPago = () => {
             Monto a Liquidar: <strong>$ {(Number(pago.cantidad) * (Number(pago.precioUnitario) || 0)).toLocaleString('es-AR')}</strong>
           </div>
           
-          <button type="submit" style={styles.btnSubmit}>
-            <Send size={18} /> REGISTRAR Y DESCARGAR PDF
+          <button type="submit" style={styles.btnSubmit} disabled={loading}>
+            {loading ? <Loader2 size={18} className="animate-spin" /> : <><Send size={18} /> REGISTRAR Y DESCARGAR PDF</>}
           </button>
         </form>
       </div>
@@ -223,7 +230,7 @@ const OrdenesPago = () => {
             </thead>
             <tbody>
               {historial.length === 0 ? (
-                <tr><td colSpan="4" style={{textAlign:'center', padding:'20px'}}>Sin movimientos registrados</td></tr>
+                <tr><td colSpan="4" style={{textAlign:'center', padding:'20px', color: '#64748b'}}>Sin movimientos registrados</td></tr>
               ) : (
                 historial.slice(0, 10).map(p => (
                   <tr key={p.id}>
@@ -252,7 +259,7 @@ const styles = {
   header: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', marginBottom: '20px', fontSize: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' },
   gridRow: { display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '15px' },
   label: { display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase' },
-  input: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.2s' },
+  input: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box', outline: 'none' },
   totalBox: { background: '#f8fafc', padding: '15px', borderRadius: '12px', textAlign: 'right', fontSize: '20px', color: '#0f172a', marginBottom: '20px', border: '1px solid #e2e8f0' },
   btnSubmit: { width: '100%', padding: '16px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' },
   btnPdf: { background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' },
