@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ShoppingCart, CreditCard, FileSpreadsheet, ClipboardList } from 'lucide-react';
+import { Users, ShoppingCart, CreditCard, ClipboardList } from 'lucide-react';
 import logoAlpha from './assets/image_f87ff8.png'; 
 
 const Dashboard = () => {
@@ -16,20 +16,47 @@ const Dashboard = () => {
     return () => { document.body.style.backgroundColor = ''; };
   }, []);
 
-  // 2. Definimos todos los módulos
+  // 2. Definimos los módulos optimizados (O. Especial eliminado)
   const allModules = [
-    { title: 'Solicitudes de Compra', icon: <ClipboardList size={40} />, path: '/solicitudes', color: '#ef4444', desc: 'Gestionar nuevas solicitudes de insumos', adminOnly: false },
-    { title: 'Proveedores', icon: <Users size={40} />, path: '/proveedores', color: '#3b82f6', desc: 'Gestionar base de datos de proveedores', adminOnly: true },
-    { title: 'Órdenes de Compra', icon: <ShoppingCart size={40} />, path: '/compras', color: '#10b981', desc: 'Generar pedidos y PDFs de compra', adminOnly: true },
-    { title: 'Órdenes de Pago', icon: <CreditCard size={40} />, path: '/pagos', color: '#f59e0b', desc: 'Registrar salidas de dinero y recibos', adminOnly: true },
-    { title: 'O. Especial', icon: <FileSpreadsheet size={40} />, path: '/orden-especial', color: '#059669', desc: 'Formato para grandes proveedores', adminOnly: true }
+    { 
+      title: 'Solicitudes de Compra', 
+      icon: <ClipboardList size={40} />, 
+      path: '/solicitudes', 
+      color: '#ef4444', 
+      desc: 'Gestionar nuevas solicitudes de insumos', 
+      adminOnly: false 
+    },
+    { 
+      title: 'Proveedores', 
+      icon: <Users size={40} />, 
+      path: '/proveedores', 
+      color: '#3b82f6', 
+      desc: 'Gestionar base de datos de proveedores', 
+      adminOnly: true 
+    },
+    { 
+      title: 'Órdenes de Compra', 
+      icon: <ShoppingCart size={40} />, 
+      path: '/compras', 
+      color: '#10b981', 
+      desc: 'Generar pedidos y PDFs con logística', 
+      adminOnly: true 
+    },
+    { 
+      title: 'Órdenes de Pago', 
+      icon: <CreditCard size={40} />, 
+      path: '/pagos', 
+      color: '#f59e0b', 
+      desc: 'Registrar salidas de dinero y recibos', 
+      adminOnly: true 
+    }
   ];
 
   // 3. Filtramos: Si es admin ve todo, si no, solo lo que no es adminOnly
   const modules = allModules.filter(m => user.rol === 'admin' || !m.adminOnly);
 
   return (
-    <div style={styles.pageBackground} key="dashboard-v2">
+    <div style={styles.pageBackground} key="dashboard-v3">
       <div style={styles.container}>
         <header style={styles.header}>
           <div style={styles.logoWrapper}>
@@ -43,7 +70,13 @@ const Dashboard = () => {
         
         <div style={styles.grid}>
           {modules.map((m, i) => (
-            <div key={i} style={styles.card} onClick={() => navigate(m.path)}>
+            <div 
+              key={i} 
+              style={styles.card} 
+              onClick={() => navigate(m.path)}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
               <div style={{ ...styles.iconWrapper, backgroundColor: m.color }}>
                 {m.icon}
               </div>
@@ -58,25 +91,37 @@ const Dashboard = () => {
   );
 };
 
-// ... (Mantenemos los mismos estilos que ya tenías)
 const styles = {
   pageBackground: { backgroundColor: '#f1f5f9', minHeight: '100vh', padding: '40px 0' },
   container: { maxWidth: '1200px', margin: '0 auto', padding: '0 20px' },
   header: { textAlign: 'center', marginBottom: '50px' },
   logoWrapper: { display: 'flex', justifyContent: 'center', marginBottom: '15px' },
   logoImg: { height: '100px', width: 'auto', display: 'block' },
-  mainTitle: { fontSize: '32px', color: '#60a5fa', fontWeight: 'bold', marginTop: '10px' },
-  subtitle: { color: '#94a3b8', fontSize: '18px' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '25px' },
+  mainTitle: { fontSize: '32px', color: '#0f172a', fontWeight: 'bold', marginTop: '10px' },
+  subtitle: { color: '#64748b', fontSize: '18px' },
+  grid: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+    gap: '30px',
+    justifyContent: 'center'
+  },
   card: { 
-    background: 'white', padding: '30px', borderRadius: '24px', textAlign: 'center',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid #e2e8f0'
+    background: 'white', 
+    padding: '35px', 
+    borderRadius: '24px', 
+    textAlign: 'center',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.05)', 
+    cursor: 'pointer', 
+    transition: 'all 0.3s ease',
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    border: '1px solid #e2e8f0'
   },
   iconWrapper: { padding: '20px', borderRadius: '20px', color: 'white', marginBottom: '20px' },
-  cardTitle: { fontSize: '19px', fontWeight: 'bold', color: '#1e293b', marginBottom: '10px' },
-  cardDesc: { color: '#64748b', fontSize: '14px', marginBottom: '20px', height: '40px' },
-  link: { fontWeight: 'bold' }
+  cardTitle: { fontSize: '20px', fontWeight: 'bold', color: '#1e293b', marginBottom: '10px' },
+  cardDesc: { color: '#64748b', fontSize: '14px', marginBottom: '20px', height: '40px', lineHeight: '1.4' },
+  link: { fontWeight: 'bold', fontSize: '15px' }
 };
 
 export default Dashboard;

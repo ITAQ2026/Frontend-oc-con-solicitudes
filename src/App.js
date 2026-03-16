@@ -11,7 +11,7 @@ import UsuariosGestion from './UsuariosGestion';
 import Proveedores from './Proveedores';
 import OrdenesCompra from './OrdenesCompra';
 import OrdenesPago from './OrdenesPago';
-import OrdenEspecial from './OrdenEspecial';
+// ELIMINADO: OrdenEspecial (Ya no es necesario)
 import SolicitudCompra from './SolicitudCompra';
 import Recibos from './Recibos';
 
@@ -20,7 +20,6 @@ import Vehiculos from './Vehiculos';
 import OrdenesTrabajo from './OrdenesTrabajo';
 
 function App() {
-  // Inicializamos el estado recuperando el usuario del localStorage
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -37,18 +36,15 @@ function App() {
     localStorage.removeItem('token');
   };
 
-  // Si no hay usuario, mostramos únicamente la pantalla de Login
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
-  // --- LÓGICA DE PERMISOS CORREGIDA ---
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
   
   const isAdmin = userRole === 'admin';
 
-  // Validamos Moreno con ambos dominios por seguridad (SRL y normal)
   const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
                    userEmail === 'm.moreno@alphaquimica.com.ar';
 
@@ -57,7 +53,6 @@ function App() {
   return (
     <Router>
       <div style={styles.app}>
-        {/* El Navbar usa la misma lógica interna para mostrar los botones */}
         <Navbar user={user} onLogout={handleLogout} />
         
         <main style={styles.main}>
@@ -80,13 +75,12 @@ function App() {
                 <Route path="/proveedores" element={<Proveedores />} />
                 <Route path="/compras" element={<OrdenesCompra />} />
                 <Route path="/pagos" element={<OrdenesPago />} />
-                <Route path="/orden-especial" element={<OrdenEspecial />} />
+                {/* LA RUTA /orden-especial HA SIDO ELIMINADA */}
                 <Route path="/recibos" element={<Recibos />} />
                 <Route path="/usuarios" element={<UsuariosGestion />} />
               </>
             )}
 
-            {/* Redirección de seguridad */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
