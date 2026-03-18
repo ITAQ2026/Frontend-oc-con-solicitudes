@@ -26,7 +26,7 @@ const OrdenesTrabajo = () => {
         api.get('/api/ordenes-trabajo'),
         api.get('/api/vehiculos')
       ]);
-      setOrdenes(resOt.data || []);
+      setOrdenes(resOt.data?.sort((a, b) => b.id - a.id) || []);
       setVehiculos(resVeh.data || []);
     } catch (err) {
       console.error("Error cargando datos:", err);
@@ -38,7 +38,6 @@ const OrdenesTrabajo = () => {
     if (!form.vehiculoId) return alert("Seleccione un vehículo");
     setLoading(true);
 
-    // Mapeo exacto al CreateOrdenTrabajoDto del backend
     const payload = {
       falla: form.descripcion_falla.trim(),
       tareas: "PENDIENTE DE REVISIÓN",
@@ -61,28 +60,30 @@ const OrdenesTrabajo = () => {
     }
   };
 
-  // --- DISEÑO PROFESIONAL DE PDF (ESTILO ALPHA QUÍMICA) ---
+  // --- DISEÑO DE PDF OPTIMIZADO PARA IMPRESIÓN (COLORES CLAROS) ---
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    const primaryColor = [15, 23, 42]; // Slate-900
+    const lightBlue = [224, 242, 254]; // Azul Cielo Claro (Sky-100)
+    const textColor = [0, 0, 0];      // Negro puro
     const margin = 14;
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // 1. Encabezado Oscuro
-    doc.setFillColor(...primaryColor);
+    // 1. Encabezado Claro
+    doc.setFillColor(...lightBlue);
     doc.rect(0, 0, pageWidth, 45, 'F'); 
 
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(...textColor);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
-    doc.text("ALPHA QUÍMICA S.A.", margin, 20);
+    doc.text("ALPHA QUÍMICA S.R.L.", margin, 20);
     
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.text("Mantenimiento de Flota y Logística", margin, 28);
     doc.text("CUIT: 30-60968636-3", margin, 33);
+    doc.text("Av Brigadier Gral San Martin 235 - Villa María, Cba.", margin, 38);
 
-    doc.setFontSize(24);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("ORDEN DE TRABAJO", pageWidth - margin, 25, { align: 'right' });
     doc.setFontSize(14);
@@ -90,15 +91,14 @@ const OrdenesTrabajo = () => {
 
     // 2. Información de Recepción
     let currentY = 55;
-    doc.setTextColor(30, 41, 59);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text("DATOS DE LA UNIDAD", margin, currentY);
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Fecha Emisión: ${new Date(ot.createdAt || Date.now()).toLocaleDateString()}`, margin, currentY + 7);
-    doc.text(`Estado: ACTIVA`, pageWidth - margin, currentY + 7, { align: 'right' });
+    doc.text(`Fecha Emisión: ${new Date(ot.createdAt || Date.now()).toLocaleDateString('es-AR')}`, margin, currentY + 7);
+    doc.text(`Estado: ACTIVA / PENDIENTE`, pageWidth - margin, currentY + 7, { align: 'right' });
 
     // 3. Tabla Principal
     autoTable(doc, {
@@ -109,18 +109,24 @@ const OrdenesTrabajo = () => {
         ['VEHÍCULO', (ot.vehiculo?.modelo || 'N/A').toUpperCase()],
         ['KILOMETRAJE', `${Number(ot.kilometraje).toLocaleString()} KM`],
         ['CHOFER / RESPONSABLE', ot.responsable.toUpperCase()],
-        ['REQUERIMIENTO PRINCIPAL', ot.descripcion_falla || ot.falla],
+        ['REQUERIMIENTO PRINCIPAL', (ot.descripcion_falla || ot.falla || '').toUpperCase()],
       ],
-      theme: 'striped',
-      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
-      styles: { cellPadding: 5, fontSize: 10 },
-      columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold', fillColor: [241, 245, 249] } }
+      theme: 'grid',
+      headStyles: { 
+        fillColor: lightBlue, 
+        textColor: textColor, 
+        fontStyle: 'bold',
+        lineWidth: 0.1,
+        lineColor: [200, 200, 200]
+      },
+      styles: { cellPadding: 5, fontSize: 10, textColor: textColor },
+      columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold', fillColor: [250, 250, 250] } }
     });
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // 4. Sección de Taller (Líneas para completar)
-    doc.setFillColor(241, 245, 249);
+    // 4. Sección de Taller (Líneas para completar a mano)
+    doc.setFillColor(248, 250, 252);
     doc.rect(margin, currentY, pageWidth - (margin * 2), 10, 'F');
     doc.setFont("helvetica", "bold");
     doc.text("INFORME TÉCNICO DE REPARACIÓN (Uso exclusivo Taller)", margin + 5, currentY + 7);
@@ -128,19 +134,21 @@ const OrdenesTrabajo = () => {
     doc.setFont("helvetica", "normal");
     doc.text("TAREAS REALIZADAS / DIAGNÓSTICO FINAL:", margin, currentY + 20);
     
-    doc.setDrawColor(203, 213, 225);
-    for (let i = 0; i < 5; i++) {
-      doc.line(margin, currentY + 28 + (i * 9), pageWidth - margin, currentY + 28 + (i * 9));
+    doc.setDrawColor(180, 180, 180);
+    for (let i = 0; i < 6; i++) {
+      doc.line(margin, currentY + 28 + (i * 10), pageWidth - margin, currentY + 28 + (i * 10));
     }
 
-    // 5. Pie de página y Firmas
+    // 5. Firmas (Líneas Negras)
     const footerY = 265;
-    doc.setDrawColor(30, 41, 59);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
     doc.line(margin + 10, footerY, margin + 70, footerY); 
     doc.line(pageWidth - margin - 70, footerY, pageWidth - margin - 10, footerY);
     
     doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "bold");
     doc.text("FIRMA Y ACLARACIÓN CHOFER", margin + 40, footerY + 5, { align: 'center' });
     doc.text("RESPONSABLE DE TALLER", pageWidth - margin - 40, footerY + 5, { align: 'center' });
 
@@ -259,10 +267,10 @@ const styles = {
   iconCircle: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '12px' },
   title: { fontSize: '24px', fontWeight: '800', margin: 0, color: '#0f172a' },
   subtitle: { fontSize: '14px', color: '#64748b', margin: 0 },
-  formGrid: { display: 'flex', flexWrap: 'wrap', gap: '20px', backgroundColor: '#f8fafc', padding: '25px', borderRadius: '12px', border: '1px solid #e2e8f0' },
+  formGrid: { display: 'flex', flexWrap: 'wrap', gap: '20px', backgroundColor: '#e0f2fe', padding: '25px', borderRadius: '12px', border: '1px solid #bae6fd' },
   inputGroup: { flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '8px' },
   fullWidthGroup: { flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#475569', display: 'flex', alignItems: 'center', gap: '5px' },
+  label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '5px' },
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
   textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', minHeight: '100px', fontSize: '14px', resize: 'vertical' },
   btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none', transition: 'all 0.2s' },
@@ -273,7 +281,7 @@ const styles = {
   th: { padding: '15px', textAlign: 'left', backgroundColor: '#f1f5f9', fontSize: '12px', color: '#475569', textTransform: 'uppercase' },
   tdRow: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' },
   td: { padding: '15px', fontSize: '14px', color: '#1e293b' },
-  btnPdf: { display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '12px', fontWeight: '600' }
+  btnPdf: { display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '12px', fontWeight: '600', color: '#0f172a' }
 };
 
 export default OrdenesTrabajo;
