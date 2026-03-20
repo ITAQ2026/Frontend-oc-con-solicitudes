@@ -10,7 +10,7 @@ const UsuariosGestion = () => {
   const cargarUsuarios = async () => {
     setCargando(true);
     try {
-      const res = await api.get('/api/usuarios');
+      const res = await api.get('/usuarios');
       setUsuarios(res.data || []);
     } catch (err) {
       console.error("Error al cargar usuarios:", err);
