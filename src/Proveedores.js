@@ -33,15 +33,29 @@ const GestionProveedores = () => {
   };
 
   const manejarCambio = (e) => {
-    const { name, value } = e.target;
-    // Auto-formateo de CUIT (opcional, solo números y guiones)
-    if (name === 'cuit') {
-      const formattedValue = value.replace(/[^0-9-]/g, '');
-      setNuevoProveedor({ ...nuevoProveedor, [name]: formattedValue });
-    } else {
-      setNuevoProveedor({ ...nuevoProveedor, [name]: value });
+  const { name, value } = e.target;
+
+  if (name === 'cuit') {
+    // Solo números
+    let numeros = value.replace(/\D/g, '');
+
+    // Limitar a 11 dígitos
+    numeros = numeros.slice(0, 11);
+
+    // Formatear automáticamente
+    let formatted = numeros;
+
+    if (numeros.length > 2 && numeros.length <= 10) {
+      formatted = `${numeros.slice(0, 2)}-${numeros.slice(2)}`;
+    } else if (numeros.length > 10) {
+      formatted = `${numeros.slice(0, 2)}-${numeros.slice(2, 10)}-${numeros.slice(10)}`;
     }
-  };
+
+    setNuevoProveedor({ ...nuevoProveedor, cuit: formatted });
+  } else {
+    setNuevoProveedor({ ...nuevoProveedor, [name]: value });
+  }
+};
 
   const agregarProveedor = async (e) => {
     e.preventDefault();

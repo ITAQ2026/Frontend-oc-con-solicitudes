@@ -43,7 +43,7 @@ const Login = ({ onLogin }) => {
         <div style={styles.logoContainer}>
           <span style={{ fontSize: '40px' }}>🛡️</span>
           <h2 style={styles.title}>Alpha Química</h2>
-          <p style={styles.subtitle}>Gestión Integral</p>
+          <p style={styles.subtitle}></p>
         </div>
 
         <div style={styles.inputGroup}>
