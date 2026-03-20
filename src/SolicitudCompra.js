@@ -5,7 +5,7 @@ import { Send, Clock, CheckCircle, XCircle, FileText, Plus, Trash2, Link as Link
 const SolicitudCompra = ({ user }) => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filtroArea, setFiltroArea] = useState(''); // Estado para el buscador
+  const [filtroArea, setFiltroArea] = useState('');
   
   const [items, setItems] = useState([{ producto: '', cantidad: 1 }]);
   
@@ -38,7 +38,6 @@ const SolicitudCompra = ({ user }) => {
     if (user) cargarSolicitudes();
   }, [user]);
 
-  // Lógica de filtrado para el Admin
   const solicitudesFiltradas = solicitudes.filter(s => 
     s.area.toLowerCase().includes(filtroArea.toLowerCase())
   );
@@ -98,7 +97,6 @@ const SolicitudCompra = ({ user }) => {
         <h2 style={styles.title}><FileText size={28} /> Gestión de Solicitudes de Compra</h2>
       </div>
 
-      {/* Formulario para usuarios (No admin) */}
       {user.rol !== 'admin' && (
         <div style={styles.card}>
           <div style={styles.sectionHeader}>
@@ -164,7 +162,6 @@ const SolicitudCompra = ({ user }) => {
         </div>
       )}
 
-      {/* --- LISTADO Y BUSCADOR --- */}
       <div style={styles.card}>
         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px'}}>
           <div style={styles.sectionHeader}>
@@ -172,13 +169,12 @@ const SolicitudCompra = ({ user }) => {
             <h3 style={styles.sectionTitle}>{user.rol === 'admin' ? "Panel de Autorizaciones" : "Mis Requerimientos"}</h3>
           </div>
 
-          {/* BUSCADOR: Solo visible para Admin */}
           {user.rol === 'admin' && (
             <div style={styles.searchContainer}>
               <Search size={18} style={styles.searchIcon} />
               <input 
                 type="text" 
-                placeholder="Filtrar por Área (ej: Mantenimiento)..." 
+                placeholder="Filtrar por Área..." 
                 style={styles.searchInput}
                 value={filtroArea}
                 onChange={(e) => setFiltroArea(e.target.value)}
@@ -194,7 +190,7 @@ const SolicitudCompra = ({ user }) => {
                 <th style={styles.th}>Fecha</th>
                 <th style={styles.th}>Origen / Usuario</th>
                 <th style={styles.th}>Ítems</th>
-                <th style={styles.th}>Monto Est.</th>
+                <th style={styles.th}>Monto Estimado</th> {/* Columna visible para todos, vital para admin */}
                 <th style={styles.th}>Prioridad</th>
                 <th style={styles.th}>Estado</th>
                 {user.rol === 'admin' && <th style={{...styles.th, textAlign: 'center'}}>Resolución</th>}
@@ -218,20 +214,35 @@ const SolicitudCompra = ({ user }) => {
                       } catch (e) { return <span>{s.justificacion}</span>; }
                     })()}
                   </td>
-                  <td style={styles.td}><DollarSign size={12} style={{display:'inline'}}/> {s.monto_estimado}</td>
+                  {/* --- MONTO ESTIMADO RESALTADO PARA EL ADMIN --- */}
+                  <td style={styles.td}>
+                    <div style={{
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '4px', 
+                      padding: '4px 8px', 
+                      borderRadius: '6px',
+                      backgroundColor: user.rol === 'admin' ? '#f0f9ff' : 'transparent',
+                      color: '#0369a1',
+                      fontWeight: '600'
+                    }}>
+                      <DollarSign size={14} />
+                      {s.monto_estimado}
+                    </div>
+                  </td>
                   <td style={styles.td}><span style={styles.urgenciaLabel(s.urgencia)}>{s.urgencia}</span></td>
                   <td style={styles.td}><span style={styles.badgeEstado(s.estado)}>{s.estado}</span></td>
                   {user.rol === 'admin' && (
                     <td style={{...styles.td, textAlign: 'center'}}>
                       <div style={styles.actions}>
-                        <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove}><CheckCircle size={22}/></button>
-                        <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject}><XCircle size={22}/></button>
+                        <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove} title="Aprobar"><CheckCircle size={22}/></button>
+                        <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject} title="Rechazar"><XCircle size={22}/></button>
                       </div>
                     </td>
                   )}
                 </tr>
               )) : (
-                <tr><td colSpan="7" style={styles.empty}>No se encontraron solicitudes para "{filtroArea}"</td></tr>
+                <tr><td colSpan="7" style={styles.empty}>No se encontraron solicitudes.</td></tr>
               )}
             </tbody>
           </table>
@@ -256,12 +267,9 @@ const styles = {
   btnDelete: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '8px' },
   btnAdd: { background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '10px', width: '100%', borderRadius: '8px', cursor: 'pointer' },
   btnSubmit: { width: '100%', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
-  
-  // Estilos del Buscador
   searchContainer: { position: 'relative', flex: '1', maxWidth: '400px', minWidth: '250px' },
   searchIcon: { position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' },
-  searchInput: { width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', border: '2px solid #e2e8f0', outline: 'none', fontSize: '14px', transition: '0.2s', ':focus': { borderColor: '#0f172a' } },
-  
+  searchInput: { width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', border: '2px solid #e2e8f0', outline: 'none', fontSize: '14px' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', borderBottom: '2px solid #f1f5f9' },
   td: { padding: '12px', fontSize: '13px', borderBottom: '1px solid #f8fafc' },
@@ -270,7 +278,8 @@ const styles = {
   actions: { display: 'flex', gap: '8px', justifyContent: 'center' },
   btnApprove: { background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer' },
   btnReject: { background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' },
-  empty: { textAlign: 'center', padding: '30px', color: '#94a3b8' }
+  empty: { textAlign: 'center', padding: '30px', color: '#94a3b8' },
+  loadingContainer: { display: 'flex', justifyContent: 'center', padding: '50px' }
 };
 
 export default SolicitudCompra;
