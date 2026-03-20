@@ -98,7 +98,7 @@ const OrdenesCompra = () => {
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
     doc.text("CUIT: 30-60968636-3", margin, 28);
     doc.text("Av Brigadier Gral San Martin 235 - Villa María, Córdoba", margin, 33);
-    doc.text(`SOLICITUD DE ORIGEN: ${scRef}`, margin, 38);
+   
     
     doc.setFontSize(18); doc.setFont("helvetica", "bold");
     doc.text("ORDEN DE COMPRA", 195, 25, { align: 'right' });
@@ -125,7 +125,7 @@ const OrdenesCompra = () => {
         doc.text(textoPago.toUpperCase(), margin + 40, currentY);
         currentY += 10;
     }
-
+    doc.text(`SOLICITUD DE ORIGEN: ${scRef}`, 135, 62);
     if (info.tiempoEstimado && info.tiempoEstimado.trim() !== "") {
         doc.setFont("helvetica", "bold");
         doc.text("ENTREGA:", margin + 5, currentY);
