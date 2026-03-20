@@ -5,7 +5,7 @@ import { Send, Clock, CheckCircle, XCircle, FileText, Plus, Trash2, Link as Link
 const SolicitudCompra = ({ user }) => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filtroArea, setFiltroArea] = useState('');
+  const [filtroArea, setFiltroArea] = useState(''); 
   
   const [items, setItems] = useState([{ producto: '', cantidad: 1 }]);
   
@@ -190,7 +190,7 @@ const SolicitudCompra = ({ user }) => {
                 <th style={styles.th}>Fecha</th>
                 <th style={styles.th}>Origen / Usuario</th>
                 <th style={styles.th}>Ítems</th>
-                <th style={styles.th}>Monto Estimado</th> {/* Columna visible para todos, vital para admin */}
+                <th style={styles.th}>Monto Estimado</th>
                 <th style={styles.th}>Prioridad</th>
                 <th style={styles.th}>Estado</th>
                 {user.rol === 'admin' && <th style={{...styles.th, textAlign: 'center'}}>Resolución</th>}
@@ -214,35 +214,22 @@ const SolicitudCompra = ({ user }) => {
                       } catch (e) { return <span>{s.justificacion}</span>; }
                     })()}
                   </td>
-                  {/* --- MONTO ESTIMADO RESALTADO PARA EL ADMIN --- */}
                   <td style={styles.td}>
-                    <div style={{
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: '4px', 
-                      padding: '4px 8px', 
-                      borderRadius: '6px',
-                      backgroundColor: user.rol === 'admin' ? '#f0f9ff' : 'transparent',
-                      color: '#0369a1',
-                      fontWeight: '600'
-                    }}>
-                      <DollarSign size={14} />
-                      {s.monto_estimado}
-                    </div>
+                    <DollarSign size={12} style={{display:'inline'}}/> {s.monto_estimado}
                   </td>
                   <td style={styles.td}><span style={styles.urgenciaLabel(s.urgencia)}>{s.urgencia}</span></td>
                   <td style={styles.td}><span style={styles.badgeEstado(s.estado)}>{s.estado}</span></td>
                   {user.rol === 'admin' && (
                     <td style={{...styles.td, textAlign: 'center'}}>
                       <div style={styles.actions}>
-                        <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove} title="Aprobar"><CheckCircle size={22}/></button>
-                        <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject} title="Rechazar"><XCircle size={22}/></button>
+                        <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove}><CheckCircle size={22}/></button>
+                        <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject}><XCircle size={22}/></button>
                       </div>
                     </td>
                   )}
                 </tr>
               )) : (
-                <tr><td colSpan="7" style={styles.empty}>No se encontraron solicitudes.</td></tr>
+                <tr><td colSpan="7" style={styles.empty}>No se encontraron solicitudes</td></tr>
               )}
             </tbody>
           </table>
@@ -278,8 +265,7 @@ const styles = {
   actions: { display: 'flex', gap: '8px', justifyContent: 'center' },
   btnApprove: { background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer' },
   btnReject: { background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' },
-  empty: { textAlign: 'center', padding: '30px', color: '#94a3b8' },
-  loadingContainer: { display: 'flex', justifyContent: 'center', padding: '50px' }
+  empty: { textAlign: 'center', padding: '30px', color: '#94a3b8' }
 };
 
 export default SolicitudCompra;
