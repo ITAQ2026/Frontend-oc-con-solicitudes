@@ -4,36 +4,53 @@ import api from './api';
 const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     
-    // Normalizamos el email antes de enviar para evitar errores de espacios/mayúsculas
+    // Normalizamos el email antes de enviar
     const normalizedEmail = email.toLowerCase().trim();
 
     try {
-      const res = await api.post('/api/usuarios/login', { 
+      // Llamada al endpoint de NestJS
+      const res = await api.post('/usuarios/login', { 
         email: normalizedEmail, 
         password 
       });
       
       if (res.data) {
-        // IMPORTANTE: Si el backend no devuelve el email en res.data, 
-        // lo agregamos manualmente del input para que el App.js pueda validar permisos
+        // Preparamos el objeto de usuario con los datos del backend
         const userToSave = {
           ...res.data,
           email: res.data.email || normalizedEmail
         };
         
+        // 1. Guardamos el token si el backend lo genera (JWT)
+        if (res.data.token) {
+          localStorage.setItem('token', res.data.token);
+        }
+
+        // 2. Guardamos el objeto usuario para que el interceptor de api.js 
+        // pueda extraer el user.id para las auditorías (adminId)
+        localStorage.setItem('user', JSON.stringify(userToSave));
+        
+        // 3. Notificamos al componente App.js
         onLogin(userToSave);
       }
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        alert("❌ Email o contraseña incorrectos");
+      // Usamos el mensaje procesado por nuestro interceptor en api.js
+      const errorMessage = err.message || "Error al iniciar sesión";
+      
+      if (err.response?.status === 401) {
+        alert("❌ Credenciales incorrectas");
       } else {
-        alert("⚠️ Error de conexión con el servidor");
+        alert(`⚠️ ${errorMessage}`);
         console.error("Login error:", err);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,7 +60,7 @@ const Login = ({ onLogin }) => {
         <div style={styles.logoContainer}>
           <span style={{ fontSize: '40px' }}>🛡️</span>
           <h2 style={styles.title}>Alpha Química</h2>
-          <p style={styles.subtitle}></p>
+          <p style={styles.subtitle}>Gestión de Compras e Inventario</p>
         </div>
 
         <div style={styles.inputGroup}>
@@ -55,6 +72,7 @@ const Login = ({ onLogin }) => {
             value={email} 
             onChange={e => setEmail(e.target.value)} 
             required 
+            disabled={loading}
           />
         </div>
 
@@ -67,11 +85,20 @@ const Login = ({ onLogin }) => {
             value={password} 
             onChange={e => setPassword(e.target.value)} 
             required 
+            disabled={loading}
           />
         </div>
 
-        <button type="submit" style={styles.button}>
-          Iniciar Sesión
+        <button 
+          type="submit" 
+          style={{
+            ...styles.button,
+            backgroundColor: loading ? '#94a3b8' : '#2563eb',
+            cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+          disabled={loading}
+        >
+          {loading ? 'Validando...' : 'Iniciar Sesión'}
         </button>
         
         <p style={styles.footerText}>Sistema de Uso Interno</p>
@@ -86,7 +113,7 @@ const styles = {
     justifyContent: 'center', 
     alignItems: 'center', 
     height: '100vh', 
-    background: '#0f172a' // Un fondo más oscuro y profesional
+    background: '#0f172a' 
   },
   form: { 
     background: 'white', 
@@ -107,19 +134,19 @@ const styles = {
     borderRadius: '8px', 
     border: '1px solid #cbd5e1',
     fontSize: '15px',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    outline: 'none'
   },
   button: { 
     width: '100%', 
     padding: '14px', 
-    background: '#2563eb', 
     color: 'white', 
     border: 'none', 
     borderRadius: '8px', 
-    cursor: 'pointer',
     fontSize: '16px',
     fontWeight: 'bold',
-    transition: 'background 0.2s'
+    transition: 'background 0.2s',
+    marginTop: '10px'
   },
   footerText: { textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#94a3b8' }
 };

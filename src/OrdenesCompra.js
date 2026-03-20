@@ -1,8 +1,8 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from './api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Package, Trash2, Plus, Save, Download, ClipboardList, Truck, CreditCard, Info, History } from 'lucide-react';
+import { Package, Trash2, Plus, Save, Download, ClipboardList, Truck, CreditCard, History } from 'lucide-react';
 
 const OrdenesCompra = () => {
   // Pegar aquí el código Base64 de la imagen image_ca0300.png
@@ -33,10 +33,11 @@ const OrdenesCompra = () => {
 
   const cargarDatos = async () => {
     try {
+      // Rutas ajustadas a NestJS (sin /api si la base ya lo incluye)
       const [resProv, resSol, resHistorial] = await Promise.all([
-        api.get('/api/proveedores'),
-        api.get('/api/solicitudes?rol=admin'),
-        api.get('/api/ordenes-compra')
+        api.get('/proveedores'),
+        api.get('/solicitudes?rol=admin'),
+        api.get('/ordenes-compra')
       ]);
       setProveedores(resProv.data || []);
       const filtradas = (resSol.data || []).filter(s => s.estado === 'Aprobado');
@@ -58,9 +59,10 @@ const OrdenesCompra = () => {
       setForm({ ...form, solicitudId: id });
       let itemsExtraidos = [];
       try {
+        // Soporte para JSON string o Array directo de NestJS/Postgres
         itemsExtraidos = typeof sol.items === 'string' ? JSON.parse(sol.items) : (sol.items || []);
       } catch (e) {
-        itemsExtraidos = [{ producto: sol.descripcion || 'Producto', cantidad: sol.cantidad || 1 }];
+        itemsExtraidos = [{ producto: sol.justificacion || 'Producto sin nombre', cantidad: 1 }];
       }
       setItems(itemsExtraidos.map(i => ({
         producto: i.producto || '',
@@ -110,15 +112,13 @@ const OrdenesCompra = () => {
     doc.rect(margin, 52, 190, 38, 'F');
     doc.setFontSize(10);
     
-    // Fila 1: Proveedor y Fecha
     doc.setFont("helvetica", "bold");
     doc.text("PROVEEDOR:", margin + 5, 62);
     doc.text("FECHA:", 135, 62);
     doc.setFont("helvetica", "normal");
     doc.text(`${(info.proveedor || info.proveedorNombre || '').toUpperCase()}`, margin + 40, 62);
-    doc.text(`${new Date(info.fecha || new Date()).toLocaleDateString('es-AR')}`, 155, 62);
+    doc.text(`${new Date(info.createdAt || info.fecha || new Date()).toLocaleDateString('es-AR')}`, 155, 62);
 
-    // Fila 2: Pago y Referencia Origen
     let currentY = 72;
     const textoPago = [info.formaPago, info.plazoPago].filter(val => val && val.trim() !== "").join(" - ");
     
@@ -132,9 +132,8 @@ const OrdenesCompra = () => {
     doc.setFont("helvetica", "normal");
     doc.text(scRef, 165, currentY);
 
-    // Fila 3: Entrega
     currentY += 10;
-    if (info.tiempoEstimado && info.tiempoEstimado.trim() !== "") {
+    if (info.tiempoEstimado) {
         doc.setFont("helvetica", "bold");
         doc.text("ENTREGA:", margin + 5, currentY);
         doc.setFont("helvetica", "normal");
@@ -166,22 +165,12 @@ const OrdenesCompra = () => {
 
     // --- LOGÍSTICA Y FIRMAS ---
     let nextY = doc.lastAutoTable.finalY + 10;
-    const marginFirma = 15;
     if (info.direccionDescarga) {
         doc.setFont("helvetica", "bold");
-        doc.text("ENTREGA EN:", marginFirma, nextY);
+        doc.text("ENTREGA EN:", 15, nextY);
         doc.setFont("helvetica", "normal");
-        doc.text(info.direccionDescarga.toUpperCase(), marginFirma + 40, nextY);
+        doc.text(info.direccionDescarga.toUpperCase(), 55, nextY);
         nextY += 8;
-    }
-
-    if (info.especificaciones) {
-        doc.setFont("helvetica", "bold");
-        doc.text("OBSERVACIONES:", marginFirma, nextY);
-        nextY += 5;
-        doc.setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(info.especificaciones, 180);
-        doc.text(lines, marginFirma, nextY);
     }
 
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -201,9 +190,13 @@ const OrdenesCompra = () => {
     e.preventDefault();
     if (!form.proveedorNombre) return alert("Seleccione un proveedor");
     try {
-      const res = await api.post('/api/ordenes-compra', { ...form, items });
+      // Guardar en NestJS
+      const res = await api.post('/ordenes-compra', { ...form, items: JSON.stringify(items) });
       alert("✅ Orden de compra generada correctamente.");
+      
+      // Exportar PDF con los datos reales del servidor
       exportarPDF(items, res.data); 
+      
       cargarDatos();
       setItems([{ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }]);
       setForm({ ...form, proveedorNombre: '', solicitudId: '', especificaciones: '', tiempoEstimado: '', retira: '' });
@@ -219,10 +212,14 @@ const OrdenesCompra = () => {
         
         <form onSubmit={enviar}>
           <div style={styles.sectionVinculo}>
-            <label style={styles.labelVinculo}><ClipboardList size={14}/> 1. Vincular Solicitud de Compra (Solo Pendientes)</label>
+            <label style={styles.labelVinculo}><ClipboardList size={14}/> 1. Vincular Solicitud de Compra (Aprobadas)</label>
             <select style={styles.inputVinculo} value={form.solicitudId} onChange={e => manejarSeleccionSolicitud(e.target.value)}>
               <option value="">-- Compra Directa (Sin solicitud previa) --</option>
-              {solicitudesAprobadas.map(s => <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante} | {s.item}</option>)}
+              {solicitudesAprobadas.map(s => (
+                <option key={s.id} value={s.id}>
+                  SC-{s.id} | {s.solicitante} | {s.area}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -299,8 +296,8 @@ const OrdenesCompra = () => {
                 <tr key={oc.id} style={{borderBottom: '1px solid #f1f5f9', fontSize: '14px'}}>
                   <td style={{padding: '12px', fontWeight: 'bold'}}>OC-{String(oc.id).padStart(4, '0')}</td>
                   <td style={{padding: '12px'}}>{oc.solicitudId ? <span style={{color: '#0369a1', fontWeight: '600'}}>SC-{oc.solicitudId}</span> : <span style={{color: '#94a3b8'}}>Directa</span>}</td>
-                  <td style={{padding: '12px'}}>{new Date(oc.fecha).toLocaleDateString()}</td>
-                  <td style={{padding: '12px'}}>{oc.proveedorNombre || oc.proveedor}</td>
+                  <td style={{padding: '12px'}}>{new Date(oc.createdAt || oc.fecha).toLocaleDateString()}</td>
+                  <td style={{padding: '12px'}}>{oc.proveedorNombre}</td>
                   <td style={{padding: '12px', textAlign: 'right'}}>
                     <button onClick={() => exportarPDF(oc.items, oc)} style={styles.btnPdfIcon}><Download size={16}/></button>
                   </td>
@@ -320,13 +317,13 @@ const styles = {
   header: { display: 'flex', alignItems: 'center', gap: '12px', color: '#0f172a', marginBottom: '25px', fontSize: '22px', fontWeight: '800' },
   sectionVinculo: { marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd' },
   labelVinculo: { fontSize: '12px', fontWeight: '800', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' },
-  inputVinculo: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #7dd3fc', fontSize: '14px' },
+  inputVinculo: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #7dd3fc', fontSize: '14px', outline: 'none' },
   sectionItems: { background: '#ffffff', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #e2e8f0' },
   gridRow: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
   input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', flex: '1', fontSize: '14px', minWidth: '100px' },
   itemRow: { display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' },
   btnDeleteRow: { background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '8px', padding: '10px', cursor: 'pointer' },
-  btnAdd: { padding: '10px', width: '100%', borderRadius: '8px', border: '1px dashed #94a3b8', cursor: 'pointer', color: '#64748b', background: 'none' },
+  btnAdd: { padding: '10px', width: '100%', borderRadius: '8px', border: '1px dashed #94a3b8', cursor: 'pointer', color: '#64748b', background: 'none', fontWeight: '600' },
   btnSubmit: { width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '16px' },
   btnPdfIcon: { backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px', borderRadius: '6px', cursor: 'pointer', color: '#0f172a' },
   label: { fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px', textTransform: 'uppercase' }

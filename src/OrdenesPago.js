@@ -5,6 +5,7 @@ import autoTable from 'jspdf-autotable';
 import { Landmark, Download, Send, History, Loader2 } from 'lucide-react';
 
 const OrdenesPago = () => {
+  // Base64 del logo (puedes completarlo con el string largo original)
   const LOGO_ALPHA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; 
 
   const [proveedores, setProveedores] = useState([]);
@@ -27,8 +28,8 @@ const OrdenesPago = () => {
   const cargarDatos = async () => {
     try {
       const [resProv, resPagos] = await Promise.all([
-        api.get('/api/proveedores'),
-        api.get('/api/ordenes-pago')
+        api.get('/proveedores'),
+        api.get('/ordenes-pago')
       ]);
       setProveedores(resProv.data || []);
       setHistorial(resPagos.data?.sort((a, b) => b.id - a.id) || []);
@@ -40,21 +41,19 @@ const OrdenesPago = () => {
   const generarPDF = (p) => {
     const doc = new jsPDF();
     const idFormateado = String(p.id).padStart(4, '0');
-    const totalCalculado = p.monto || (p.cantidad * p.precioUnitario);
+    const totalCalculado = p.monto || (Number(p.cantidad) * Number(p.precioUnitario));
     
-    // --- NUEVA PALETA DE COLORES CLAROS ---
-    const lightBlue = [224, 242, 254]; // Azul muy claro (Sky-100)
-    const textColor = [0, 0, 0];      // Negro puro para máxima legibilidad
+    const lightBlue = [224, 242, 254]; 
+    const textColor = [0, 0, 0]; 
 
     // --- CABECERA ---
     doc.setFillColor(...lightBlue);
     doc.rect(0, 0, 210, 40, 'F');
     
     try { 
-      doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
+      if (LOGO_ALPHA.length > 50) doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
     } catch (e) { console.warn("Logo no disponible"); }
 
-    // Títulos en Negro
     doc.setTextColor(...textColor);
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
@@ -67,7 +66,7 @@ const OrdenesPago = () => {
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text(`NRO ORDEN: ${idFormateado}`, 15, 50);
-    doc.text(`FECHA: ${new Date(p.fecha || p.fecha_creacion).toLocaleDateString('es-AR')}`, 15, 56);
+    doc.text(`FECHA: ${new Date(p.createdAt || Date.now()).toLocaleDateString('es-AR')}`, 15, 56);
     doc.text(`CAJA/ORIGEN: ${(p.caja || "GENERAL").toUpperCase()}`, 15, 62);
     
     // --- TABLA DE DETALLE ---
@@ -106,13 +105,13 @@ const OrdenesPago = () => {
       headStyles: { fillColor: [241, 245, 249], textColor: textColor }
     });
 
-    // --- SECCIÓN DE FIRMA (ABAJO A LA DERECHA) ---
+    // --- SECCIÓN DE FIRMA ---
     const finalY = 245;
     const margenDerecho = 195;
     const anchoFirma = 75;
     const inicioFirmaX = margenDerecho - anchoFirma;
 
-    doc.setDrawColor(0); // Línea negra fina
+    doc.setDrawColor(0); 
     doc.setLineWidth(0.5);
     doc.line(inicioFirmaX, finalY, margenDerecho, finalY); 
     
@@ -135,7 +134,12 @@ const OrdenesPago = () => {
 
     try {
       const montoTotal = Number(pago.cantidad) * Number(pago.precioUnitario);
-      const res = await api.post('/api/ordenes-pago', { ...pago, monto: montoTotal });
+      const res = await api.post('/ordenes-pago', { 
+        ...pago, 
+        monto: montoTotal,
+        cantidad: Number(pago.cantidad),
+        precioUnitario: Number(pago.precioUnitario)
+      });
       
       alert("✅ Orden de Pago registrada con éxito");
       generarPDF(res.data);
@@ -146,7 +150,7 @@ const OrdenesPago = () => {
       });
       cargarDatos();
     } catch (err) { 
-      alert("❌ Error al registrar el pago"); 
+      alert(`❌ ${err.response?.data?.message || "Error al registrar el pago"}`); 
     } finally {
       setLoading(false);
     }
@@ -260,7 +264,7 @@ const OrdenesPago = () => {
 };
 
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
+  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh', fontFamily: 'Inter, sans-serif' },
   card: { background: 'white', borderRadius: '16px', padding: '25px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', maxWidth: '900px', margin: '0 auto 20px' },
   header: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', marginBottom: '20px', fontSize: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' },
   gridRow: { display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '15px' },

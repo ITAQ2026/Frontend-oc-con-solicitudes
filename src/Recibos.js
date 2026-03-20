@@ -10,7 +10,7 @@ const Recibos = () => {
   const [form, setForm] = useState({ 
     emisor: 'Alpha Química S.A.', 
     receptor: '', 
-    concept: '', 
+    concepto: '', // Corregido: antes decía 'concept'
     monto: '', 
     condicion_pago: 'Transferencia' 
   });
@@ -21,7 +21,8 @@ const Recibos = () => {
 
   const fetchRecibos = async () => {
     try {
-      const res = await api.get('/api/recibos');
+      // Ruta ajustada a NestJS
+      const res = await api.get('/recibos');
       setRecibos(res.data?.sort((a, b) => b.id - a.id) || []);
     } catch (err) { 
       console.error("Error al cargar recibos", err); 
@@ -33,9 +34,12 @@ const Recibos = () => {
     setLoading(true);
     try {
       const payload = { ...form, monto: Number(form.monto) };
-      await api.post('/api/recibos', payload);
+      const res = await api.post('/recibos', payload);
       
       alert("✅ Recibo generado y registrado");
+      // Generar PDF inmediatamente con los datos devueltos por el servidor (incluye el ID real)
+      descargarPDF(res.data);
+
       setForm({ 
         emisor: 'Alpha Química S.A.', 
         receptor: '', 
@@ -54,16 +58,14 @@ const Recibos = () => {
   const descargarPDF = (r) => {
     const doc = new jsPDF();
     
-    // --- COLORES CLAROS PARA IMPRESIÓN ---
-    const lightBlue = [224, 242, 254]; // Sky-100
-    const textColor = [0, 0, 0];      // Negro
+    const lightBlue = [224, 242, 254]; 
+    const textColor = [0, 0, 0];      
     const margin = 20;
 
-    // Encabezado con fondo claro
+    // Encabezado
     doc.setFillColor(...lightBlue);
     doc.rect(0, 0, 210, 40, 'F');
     
-    // Títulos en Negro
     doc.setTextColor(...textColor);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
@@ -80,16 +82,18 @@ const Recibos = () => {
     
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Fecha: ${new Date(r.fecha).toLocaleDateString('es-AR')}`, 190, 55, { align: 'right' });
+    // Manejo de fecha compatible con NestJS (createdAt)
+    const fechaMostrar = new Date(r.createdAt || r.fecha || Date.now()).toLocaleDateString('es-AR');
+    doc.text(`Fecha: ${fechaMostrar}`, 190, 55, { align: 'right' });
 
-    // Tabla de Contenido ajustada
+    // Tabla de Contenido
     autoTable(doc, {
       startY: 65,
       head: [['Concepto', 'Información']],
       body: [
         ['EMISOR / PAGADOR', r.emisor.toUpperCase()],
         ['RECEPTOR / BENEFICIARIO', r.receptor.toUpperCase()],
-        ['MOTIVO DEL PAGO', r.concepto.toUpperCase()],
+        ['MOTIVO DEL PAGO', (r.concepto || "").toUpperCase()],
         ['MÉTODO UTILIZADO', r.condicion_pago.toUpperCase()],
         ['MONTO TOTAL', `$ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
       ],
@@ -105,20 +109,20 @@ const Recibos = () => {
 
     const finalY = doc.lastAutoTable.finalY + 15;
     
-    // Cuadro de Total más sobrio
+    // Cuadro de Total
     doc.setFillColor(248, 250, 252);
     doc.rect(margin, finalY, 170, 15, 'F');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(`TOTAL RECIBIDO: $ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 105, finalY + 10, { align: 'center' });
 
-    // SECCIÓN DE FIRMAS (Líneas negras finas)
+    // SECCIÓN DE FIRMAS
     const firmaY = finalY + 45;
     doc.setDrawColor(0);
     doc.setLineWidth(0.5);
     
-    doc.line(margin + 10, firmaY, margin + 70, firmaY); // Línea Emisor
-    doc.line(130, firmaY, 190, firmaY); // Línea Receptor
+    doc.line(margin + 10, firmaY, margin + 70, firmaY); 
+    doc.line(130, firmaY, 190, firmaY); 
 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
@@ -187,7 +191,7 @@ const Recibos = () => {
                 {recibos.length > 0 ? recibos.map(r => (
                   <tr key={r.id} style={styles.tdRow}>
                     <td style={styles.td}>#{String(r.id).padStart(4, '0')}</td>
-                    <td style={styles.td}>{new Date(r.fecha).toLocaleDateString()}</td>
+                    <td style={styles.td}>{new Date(r.createdAt || r.fecha).toLocaleDateString()}</td>
                     <td style={styles.td}>{r.receptor}</td>
                     <td style={{...styles.td, fontWeight: 'bold', color: '#15803d'}}>$ {Number(r.monto).toLocaleString('es-AR')}</td>
                     <td style={{ ...styles.td, textAlign: 'center' }}>

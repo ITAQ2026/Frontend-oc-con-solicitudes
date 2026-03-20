@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from './api'; 
-import { Send, Clock, CheckCircle, XCircle, FileText, Plus, Trash2, Link as LinkIcon, DollarSign, Building2, Search } from 'lucide-react';
+import { Send, Clock, CheckCircle, XCircle, FileText, Plus, Trash2, Building2, Search, DollarSign } from 'lucide-react';
 
 const SolicitudCompra = ({ user }) => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filtroArea, setFiltroArea] = useState(''); 
-  
   const [items, setItems] = useState([{ producto: '', cantidad: 1 }]);
   
   const [nuevaSolicitud, setNuevaSolicitud] = useState({
@@ -27,7 +26,8 @@ const SolicitudCompra = ({ user }) => {
   const cargarSolicitudes = async () => {
     if (!user?.id) return;
     try {
-      const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuario_id=${user.id}`);
+      // Ajustado a ruta de NestJS
+      const res = await api.get(`/solicitudes?rol=${user.rol}&usuarioId=${user.id}`);
       setSolicitudes(res.data || []);
     } catch (err) {
       console.error("Error cargando solicitudes:", err);
@@ -39,7 +39,7 @@ const SolicitudCompra = ({ user }) => {
   }, [user]);
 
   const solicitudesFiltradas = solicitudes.filter(s => 
-    s.area.toLowerCase().includes(filtroArea.toLowerCase())
+    s.area?.toLowerCase().includes(filtroArea.toLowerCase())
   );
 
   const agregarFila = () => setItems([...items, { producto: '', cantidad: 1 }]);
@@ -66,15 +66,15 @@ const SolicitudCompra = ({ user }) => {
         ...nuevaSolicitud, 
         items: JSON.stringify(items), 
         estado: 'En Revisión',
-        usuario_id: user.id 
+        usuarioId: user.id 
       };
-      await api.post('/api/solicitudes', payload);
+      await api.post('/solicitudes', payload);
       alert("✅ Solicitud enviada correctamente");
       setItems([{ producto: '', cantidad: 1 }]);
       setNuevaSolicitud({ ...nuevaSolicitud, area: '', justificacion: '', link_referencia: '' });
       cargarSolicitudes();
     } catch (err) {
-      alert("❌ Error al procesar");
+      alert("❌ Error al procesar la solicitud");
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ const SolicitudCompra = ({ user }) => {
 
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
-      await api.patch(`/api/solicitudes/${id}/estado`, { estado: nuevoEstado });
+      await api.patch(`/solicitudes/${id}/estado`, { estado: nuevoEstado });
       cargarSolicitudes();
     } catch (err) {
       alert("Error al actualizar el estado");
@@ -163,7 +163,7 @@ const SolicitudCompra = ({ user }) => {
       )}
 
       <div style={styles.card}>
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px'}}>
+        <div style={styles.tableHeaderContainer}>
           <div style={styles.sectionHeader}>
             <Clock size={20} />
             <h3 style={styles.sectionTitle}>{user.rol === 'admin' ? "Panel de Autorizaciones" : "Mis Requerimientos"}</h3>
@@ -199,7 +199,7 @@ const SolicitudCompra = ({ user }) => {
             <tbody>
               {solicitudesFiltradas.length > 0 ? solicitudesFiltradas.map((s) => (
                 <tr key={s.id} style={styles.trBody}>
-                  <td style={styles.td}>{new Date(s.fecha_creacion).toLocaleDateString()}</td>
+                  <td style={styles.td}>{new Date(s.createdAt || s.fecha_creacion).toLocaleDateString()}</td>
                   <td style={styles.td}>
                       <div style={{fontWeight:'700', color: '#1e293b'}}>{s.area}</div>
                       <div style={{fontSize:'12px', color:'#64748b'}}>{s.solicitante}</div>
@@ -222,8 +222,8 @@ const SolicitudCompra = ({ user }) => {
                   {user.rol === 'admin' && (
                     <td style={{...styles.td, textAlign: 'center'}}>
                       <div style={styles.actions}>
-                        <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove}><CheckCircle size={22}/></button>
-                        <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject}><XCircle size={22}/></button>
+                        <button onClick={() => cambiarEstado(s.id, 'Aprobado')} style={styles.btnApprove} title="Aprobar"><CheckCircle size={22}/></button>
+                        <button onClick={() => cambiarEstado(s.id, 'Rechazado')} style={styles.btnReject} title="Rechazar"><XCircle size={22}/></button>
                       </div>
                     </td>
                   )}
@@ -246,26 +246,31 @@ const styles = {
   card: { background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: '8px' },
   sectionTitle: { fontSize: '14px', fontWeight: '700', margin: 0, textTransform: 'uppercase' },
-  gridForm: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' },
+  gridForm: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '15px' },
   inputGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
   label: { fontSize: '11px', fontWeight: '800', color: '#475569' },
   rowItem: { display: 'flex', gap: '8px', marginBottom: '8px' },
-  btnDelete: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '8px' },
-  btnAdd: { background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '10px', width: '100%', borderRadius: '8px', cursor: 'pointer' },
-  btnSubmit: { width: '100%', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' },
-  searchContainer: { position: 'relative', flex: '1', maxWidth: '400px', minWidth: '250px' },
+  btnDelete: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '8px', cursor: 'pointer' },
+  btnAdd: { background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '10px', width: '100%', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' },
+  btnSubmit: { width: '100%', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px', cursor: 'pointer' },
+  
+  // CORRECCIÓN DEL FILTRO AREA
+  tableHeaderContainer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' },
+  searchContainer: { position: 'relative', width: '100%', maxWidth: '300px' },
   searchIcon: { position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' },
-  searchInput: { width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', border: '2px solid #e2e8f0', outline: 'none', fontSize: '14px' },
+  searchInput: { width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', border: '2px solid #e2e8f0', outline: 'none', fontSize: '14px', boxSizing: 'border-box' },
+  
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', borderBottom: '2px solid #f1f5f9' },
+  th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', borderBottom: '2px solid #f1f5f9', textTransform: 'uppercase' },
   td: { padding: '12px', fontSize: '13px', borderBottom: '1px solid #f8fafc' },
   badgeEstado: (e) => ({ padding: '4px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: '700', background: e === 'Aprobado' ? '#dcfce7' : e === 'Rechazado' ? '#fee2e2' : '#fef3c7', color: e === 'Aprobado' ? '#166534' : e === 'Rechazado' ? '#991b1b' : '#92400e' }),
   urgenciaLabel: (u) => ({ fontSize: '11px', fontWeight: '700', color: u === 'ALTA' ? '#dc2626' : '#64748b' }),
-  actions: { display: 'flex', gap: '8px', justifyContent: 'center' },
-  btnApprove: { background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer' },
-  btnReject: { background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' },
-  empty: { textAlign: 'center', padding: '30px', color: '#94a3b8' }
+  actions: { display: 'flex', gap: '12px', justifyContent: 'center' },
+  btnApprove: { background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0 },
+  btnReject: { background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 0 },
+  empty: { textAlign: 'center', padding: '30px', color: '#94a3b8' },
+  loadingContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', gap: '10px', color: '#64748b' }
 };
 
 export default SolicitudCompra;

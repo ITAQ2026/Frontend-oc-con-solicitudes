@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { UserPlus, Trash2, Globe, Phone, Hash, MapPin, Search, Loader2 } from 'lucide-react';
+import { UserPlus, Trash2, MapPin, Search, Loader2, Info } from 'lucide-react';
 
 const GestionProveedores = () => {
   const [proveedores, setProveedores] = useState([]);
@@ -23,7 +23,8 @@ const GestionProveedores = () => {
   const cargarProveedores = async () => {
     setCargando(true);
     try {
-      const res = await api.get('/api/proveedores');
+      // Usamos la ruta directa, el interceptor maneja el resto
+      const res = await api.get('/proveedores');
       setProveedores(res.data || []);
     } catch (err) {
       console.error("Error al cargar proveedores:", err);
@@ -33,29 +34,21 @@ const GestionProveedores = () => {
   };
 
   const manejarCambio = (e) => {
-  const { name, value } = e.target;
+    const { name, value } = e.target;
 
-  if (name === 'cuit') {
-    // Solo números
-    let numeros = value.replace(/\D/g, '');
-
-    // Limitar a 11 dígitos
-    numeros = numeros.slice(0, 11);
-
-    // Formatear automáticamente
-    let formatted = numeros;
-
-    if (numeros.length > 2 && numeros.length <= 10) {
-      formatted = `${numeros.slice(0, 2)}-${numeros.slice(2)}`;
-    } else if (numeros.length > 10) {
-      formatted = `${numeros.slice(0, 2)}-${numeros.slice(2, 10)}-${numeros.slice(10)}`;
+    if (name === 'cuit') {
+      let numeros = value.replace(/\D/g, '').slice(0, 11);
+      let formatted = numeros;
+      if (numeros.length > 2 && numeros.length <= 10) {
+        formatted = `${numeros.slice(0, 2)}-${numeros.slice(2)}`;
+      } else if (numeros.length > 10) {
+        formatted = `${numeros.slice(0, 2)}-${numeros.slice(2, 10)}-${numeros.slice(10)}`;
+      }
+      setNuevoProveedor({ ...nuevoProveedor, cuit: formatted });
+    } else {
+      setNuevoProveedor({ ...nuevoProveedor, [name]: value });
     }
-
-    setNuevoProveedor({ ...nuevoProveedor, cuit: formatted });
-  } else {
-    setNuevoProveedor({ ...nuevoProveedor, [name]: value });
-  }
-};
+  };
 
   const agregarProveedor = async (e) => {
     e.preventDefault();
@@ -64,23 +57,26 @@ const GestionProveedores = () => {
     }
 
     try {
-      await api.post('/api/proveedores', nuevoProveedor);
+      // El interceptor inyecta el adminId automáticamente desde el localStorage
+      await api.post('/proveedores', nuevoProveedor);
+      
       setNuevoProveedor({
         nombre: '', cuit: '', direccion: '', localidad: '',
         provincia: '', telefono: '', codigoPostal: ''
       });
+      
       alert("✅ Proveedor registrado correctamente");
       cargarProveedores();
     } catch (err) {
-      const msg = err.response?.data?.message || "Error al guardar";
-      alert(`❌ ${msg}`);
+      // Capturamos el error procesado por nuestro interceptor de respuesta
+      alert(`❌ ${err.message}`);
     }
   };
 
   const eliminarProveedor = async (id) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar permanentemente este proveedor?")) {
       try {
-        await api.delete(`/api/proveedores/${id}`);
+        await api.delete(`/proveedores/${id}`);
         cargarProveedores();
       } catch (err) {
         alert("No se pudo eliminar: El proveedor podría tener órdenes de compra asociadas.");
@@ -88,10 +84,9 @@ const GestionProveedores = () => {
     }
   };
 
-  // Filtrado en tiempo real
   const proveedoresFiltrados = proveedores.filter(p => 
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || 
-    p.cuit.includes(busqueda)
+    p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || 
+    p.cuit?.includes(busqueda)
   );
 
   return (
@@ -106,12 +101,12 @@ const GestionProveedores = () => {
         </div>
 
         <form onSubmit={agregarProveedor} style={styles.formGrid}>
-          <div style={{ gridColumn: 'span 1' }}>
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 1' }}>
             <label style={styles.label}>Nombre / Razón Social</label>
             <input style={styles.input} name="nombre" value={nuevoProveedor.nombre} onChange={manejarCambio} placeholder="Ej: Alpha Química S.A." required />
           </div>
 
-          <div style={{ gridColumn: 'span 1' }}>
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 1' }}>
             <label style={{...styles.label, color: '#3b82f6'}}>CUIT (Sin puntos)</label>
             <input style={{...styles.input, borderColor: '#3b82f6'}} name="cuit" value={nuevoProveedor.cuit} onChange={manejarCambio} placeholder="30-60968636-3" required />
           </div>
@@ -192,7 +187,7 @@ const GestionProveedores = () => {
                     </td>
                     <td style={styles.td}>{p.telefono || '---'}</td>
                     <td style={{...styles.td, textAlign: 'center'}}>
-                      <button onClick={() => eliminarProveedor(p.id)} style={styles.btnDelete} title="Eliminar permanentemente">
+                      <button onClick={() => eliminarProveedor(p.id)} style={styles.btnDelete} title="Eliminar">
                         <Trash2 size={16} />
                       </button>
                     </td>
@@ -207,8 +202,11 @@ const GestionProveedores = () => {
   );
 };
 
+// Variable auxiliar para responsividad básica en estilos inline
+const isMobile = window.innerWidth < 768;
+
 const styles = {
-  container: { padding: '30px 20px', background: '#f8fafc', minHeight: '100vh' },
+  container: { padding: '30px 20px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, sans-serif' },
   card: { background: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', maxWidth: '1000px', margin: '0 auto' },
   header: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' },
   iconBox: { background: '#0f172a', padding: '10px', borderRadius: '12px' },
@@ -218,7 +216,7 @@ const styles = {
   label: { display: 'block', fontSize: '11px', fontWeight: '800', color: '#475569', marginBottom: '6px', textTransform: 'uppercase' },
   input: { width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '14px', boxSizing: 'border-box', outline: 'none' },
   hr: { border: '0', borderTop: '1px solid #f1f5f9', margin: '10px 0' },
-  btnPrimary: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', marginTop: '10px' },
+  btnPrimary: { gridColumn: 'span 2', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', marginTop: '10px', transition: '0.2s' },
   tableHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' },
   tableTitle: { margin: 0, fontSize: '16px', color: '#1e293b', borderLeft: '4px solid #3b82f6', paddingLeft: '12px' },
   searchBox: { display: 'flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', padding: '8px 15px', borderRadius: '20px', border: '1px solid #e2e8f0' },
@@ -230,7 +228,7 @@ const styles = {
   td: { padding: '12px 15px', fontSize: '14px' },
   pNombre: { fontWeight: '600', color: '#1e293b' },
   pCuit: { color: '#3b82f6', fontSize: '12px', fontWeight: '500' },
-  btnDelete: { background: '#fff1f2', border: 'none', color: '#e11d48', cursor: 'pointer', padding: '8px', borderRadius: '6px', transition: '0.2s' },
+  btnDelete: { background: '#fff1f2', border: 'none', color: '#e11d48', cursor: 'pointer', padding: '8px', borderRadius: '6px' },
   emptyState: { textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }
 };
 

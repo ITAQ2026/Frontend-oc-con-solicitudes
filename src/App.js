@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Componentes Base
@@ -11,7 +11,6 @@ import UsuariosGestion from './UsuariosGestion';
 import Proveedores from './Proveedores';
 import OrdenesCompra from './OrdenesCompra';
 import OrdenesPago from './OrdenesPago';
-// ELIMINADO: OrdenEspecial (Ya no es necesario)
 import SolicitudCompra from './SolicitudCompra';
 import Recibos from './Recibos';
 
@@ -20,31 +19,42 @@ import Vehiculos from './Vehiculos';
 import OrdenesTrabajo from './OrdenesTrabajo';
 
 function App() {
+  // Inicializamos el estado desde localStorage para persistir la sesión al recargar
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+      console.error("Error al cargar usuario de localStorage", error);
+      return null;
+    }
   });
 
   const handleLogin = (userData) => {
     setUser(userData);
+    // Ya lo guardamos en Login.jsx, pero lo reforzamos aquí por seguridad
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
-    setUser(null);
+    // IMPORTANTE: Limpiar todo para que el interceptor de api.js no envíe datos viejos
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    setUser(null);
   };
 
+  // Si no hay usuario, mostramos la pantalla de Login
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Normalización de roles y permisos
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
   
   const isAdmin = userRole === 'admin';
 
+  // Lógica específica para Moreno (Logística)
   const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
                    userEmail === 'm.moreno@alphaquimica.com.ar';
 
@@ -53,6 +63,7 @@ function App() {
   return (
     <Router>
       <div style={styles.app}>
+        {/* Pasamos el usuario y la función de logout al Navbar */}
         <Navbar user={user} onLogout={handleLogout} />
         
         <main style={styles.main}>
@@ -75,12 +86,12 @@ function App() {
                 <Route path="/proveedores" element={<Proveedores />} />
                 <Route path="/compras" element={<OrdenesCompra />} />
                 <Route path="/pagos" element={<OrdenesPago />} />
-                {/* LA RUTA /orden-especial HA SIDO ELIMINADA */}
                 <Route path="/recibos" element={<Recibos />} />
                 <Route path="/usuarios" element={<UsuariosGestion />} />
               </>
             )}
 
+            {/* Redirección por defecto si la ruta no existe o no tiene permiso */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

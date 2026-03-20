@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import api from './api'; 
-import { Truck, Plus, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import { Truck, Plus, Trash2, AlertCircle, Car } from 'lucide-react';
 
 const Vehiculos = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ patente: '', modelo: '', anio: '', vencimiento_vtv: '' });
+  // Ajustamos el form para que coincida con el DTO del Backend
+  const [form, setForm] = useState({ 
+    patente: '', 
+    marca: '', 
+    modelo: '', 
+    anio: '', 
+    kilometraje_actual: 0,
+    estado: 'Disponible' 
+  });
 
   useEffect(() => {
     fetchVehiculos();
@@ -13,7 +21,8 @@ const Vehiculos = () => {
 
   const fetchVehiculos = async () => {
     try {
-      const res = await api.get('/api/vehiculos'); 
+      // Quitamos el prefix /api si ya está en la baseURL de api.js
+      const res = await api.get('/vehiculos'); 
       setVehiculos(res.data || []);
     } catch (err) {
       console.error("Error al cargar flota", err);
@@ -24,38 +33,33 @@ const Vehiculos = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/api/vehiculos', form); 
+      // El adminId se enviará solo gracias al interceptor de api.js
+      await api.post('/vehiculos', {
+        ...form,
+        anio: Number(form.anio),
+        kilometraje_actual: Number(form.kilometraje_actual)
+      }); 
+      
       alert("✅ Vehículo registrado en la flota");
-      setForm({ patente: '', modelo: '', anio: '', vencimiento_vtv: '' });
+      setForm({ patente: '', marca: '', modelo: '', anio: '', kilometraje_actual: 0, estado: 'Disponible' });
       fetchVehiculos();
     } catch (err) { 
-      alert("❌ Error: Verifique que la patente no esté duplicada."); 
+      // Usamos el mensaje procesado por el interceptor
+      alert("❌ " + (err.message || "Error al registrar vehículo")); 
     } finally {
       setLoading(false);
     }
   };
 
   const eliminarVehiculo = async (id, patente) => {
-    if(window.confirm(`¿Desea dar de baja el vehículo ${patente} de la flota?`)) { 
+    if(window.confirm(`¿Desea dar de baja el vehículo ${patente}?`)) { 
       try {
-        await api.delete(`/api/vehiculos/${id}`); 
+        await api.delete(`/vehiculos/${id}`); 
         fetchVehiculos(); 
       } catch(e) { 
-        alert("Error al eliminar"); 
+        alert("Error al eliminar: " + e.message); 
       }
     }
-  };
-
-  // Función para detectar VTV vencida o próxima a vencer (30 días)
-  const getVtvStatus = (fecha) => {
-    if (!fecha) return { color: '#64748b', text: 'Sin fecha' };
-    const hoy = new Date();
-    const vencimiento = new Date(fecha);
-    const diff = (vencimiento - hoy) / (1000 * 60 * 60 * 24);
-    
-    if (diff < 0) return { color: '#ef4444', text: 'VENCIDA', alert: true };
-    if (diff < 30) return { color: '#f59e0b', text: 'Próxima a vencer', alert: true };
-    return { color: '#10b981', text: 'Al día' };
   };
 
   return (
@@ -63,32 +67,42 @@ const Vehiculos = () => {
       <div style={styles.card}>
         <div style={styles.headerContainer}>
           <h2 style={styles.header}><Truck size={28} color="#0f172a" /> Control de Flota Logística</h2>
-          <p style={styles.subtitle}>Seguimiento de unidades y vencimientos técnicos</p>
+          <p style={styles.subtitle}>Gestión de unidades y estado de activos</p>
         </div>
         
         <form onSubmit={handleSubmit} style={styles.formGrid}>
           <div style={styles.inputBox}>
-            <label style={styles.miniLabel}>Patente / Dominio</label>
+            <label style={styles.miniLabel}>Patente</label>
             <input 
               style={styles.input} 
-              placeholder="Ej: AE123KL" 
+              placeholder="AE123KL" 
               required 
               value={form.patente} 
               onChange={e => setForm({...form, patente: e.target.value.toUpperCase()})} 
             />
           </div>
           <div style={styles.inputBox}>
-            <label style={styles.miniLabel}>Marca y Modelo</label>
+            <label style={styles.miniLabel}>Marca</label>
             <input 
               style={styles.input} 
-              placeholder="Ej: Mercedes Sprinter" 
+              placeholder="Ej: Toyota" 
+              required 
+              value={form.marca} 
+              onChange={e => setForm({...form, marca: e.target.value})} 
+            />
+          </div>
+          <div style={styles.inputBox}>
+            <label style={styles.miniLabel}>Modelo</label>
+            <input 
+              style={styles.input} 
+              placeholder="Ej: Hilux" 
               required 
               value={form.modelo} 
               onChange={e => setForm({...form, modelo: e.target.value})} 
             />
           </div>
           <div style={styles.inputBox}>
-            <label style={styles.miniLabel}>Año Unidad</label>
+            <label style={styles.miniLabel}>Año</label>
             <input 
               style={styles.input} 
               type="number" 
@@ -98,13 +112,17 @@ const Vehiculos = () => {
             />
           </div>
           <div style={styles.inputBox}>
-            <label style={styles.miniLabel}>Vencimiento VTV</label>
-            <input 
+            <label style={styles.miniLabel}>Estado</label>
+            <select 
               style={styles.input} 
-              type="date" 
-              value={form.vencimiento_vtv} 
-              onChange={e => setForm({...form, vencimiento_vtv: e.target.value})} 
-            />
+              value={form.estado}
+              onChange={e => setForm({...form, estado: e.target.value})}
+            >
+              <option value="Disponible">Disponible</option>
+              <option value="En Uso">En Uso</option>
+              <option value="En Taller">En Taller</option>
+              <option value="Baja">Baja</option>
+            </select>
           </div>
           <button type="submit" style={styles.btnSave} disabled={loading}>
             <Plus size={18}/> {loading ? '...' : 'REGISTRAR'}
@@ -116,46 +134,44 @@ const Vehiculos = () => {
             <thead>
               <tr style={styles.thRow}>
                 <th style={styles.th}>UNIDAD</th>
-                <th style={styles.th}>MODELO</th>
-                <th style={styles.th}>VTV / ESTADO</th>
+                <th style={styles.th}>MARCA / MODELO</th>
+                <th style={styles.th}>ESTADO</th>
                 <th style={{ ...styles.th, textAlign: 'center' }}>ACCIONES</th>
               </tr>
             </thead>
             <tbody>
-              {vehiculos.length > 0 ? vehiculos.map(v => {
-                const status = getVtvStatus(v.vencimiento_vtv);
-                return (
-                  <tr key={v.id} style={styles.tdRow}>
-                    <td style={styles.td}>
-                      <div style={styles.patenteBadge}>{v.patente}</div>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={{fontWeight: '600'}}>{v.modelo}</div>
-                      <div style={{fontSize: '12px', color: '#64748b'}}>Año: {v.anio || 'N/D'}</div>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '13px', color: status.color, fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {status.alert && <AlertCircle size={14} />} {status.text}
-                        </span>
-                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                          Vence: {v.vencimiento_vtv ? new Date(v.vencimiento_vtv).toLocaleDateString() : 'No cargada'}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button 
-                        onClick={() => eliminarVehiculo(v.id, v.patente)} 
-                        style={styles.btnDel}
-                        title="Eliminar de flota"
-                      >
-                        <Trash2 size={16}/>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              }) : (
-                <tr><td colSpan="4" style={styles.empty}>No hay vehículos registrados en la flota.</td></tr>
+              {vehiculos.length > 0 ? vehiculos.map(v => (
+                <tr key={v.id} style={styles.tdRow}>
+                  <td style={styles.td}>
+                    <div style={styles.patenteBadge}>{v.patente}</div>
+                  </td>
+                  <td style={styles.td}>
+                    <div style={{fontWeight: '600'}}>{v.marca} {v.modelo}</div>
+                    <div style={{fontSize: '12px', color: '#64748b'}}>Año: {v.anio || 'N/D'}</div>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={{ 
+                      fontSize: '12px', 
+                      padding: '4px 8px', 
+                      borderRadius: '6px',
+                      fontWeight: 'bold',
+                      background: v.estado === 'Disponible' ? '#dcfce7' : '#fee2e2',
+                      color: v.estado === 'Disponible' ? '#166534' : '#991b1b'
+                    }}>
+                      {v.estado}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button 
+                      onClick={() => eliminarVehiculo(v.id, v.patente)} 
+                      style={styles.btnDel}
+                    >
+                      <Trash2 size={16}/>
+                    </button>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan="4" style={styles.empty}>No hay vehículos registrados.</td></tr>
               )}
             </tbody>
           </table>
@@ -171,19 +187,19 @@ const styles = {
   headerContainer: { marginBottom: '30px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' },
   header: { display: 'flex', alignItems: 'center', gap: '12px', margin: 0, fontWeight: '800', color: '#0f172a' },
   subtitle: { fontSize: '14px', color: '#64748b', marginTop: '5px' },
-  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '40px', background: '#f8fafc', padding: '25px', borderRadius: '15px', border: '1px solid #e2e8f0' },
+  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '40px', background: '#f8fafc', padding: '25px', borderRadius: '15px', border: '1px solid #e2e8f0' },
   inputBox: { display: 'flex', flexDirection: 'column', gap: '5px' },
   miniLabel: { fontSize: '11px', fontWeight: '800', color: '#475569', textTransform: 'uppercase' },
-  input: { padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#0f172a' },
-  btnSave: { height: '45px', marginTop: 'auto', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s' },
+  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  btnSave: { height: '42px', marginTop: 'auto', background: '#0f172a', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   tableWrapper: { overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', borderBottom: '2px solid #f1f5f9', fontWeight: '700', textTransform: 'uppercase' },
-  tdRow: { borderBottom: '1px solid #f8fafc', transition: '0.2s' },
+  tdRow: { borderBottom: '1px solid #f8fafc' },
   td: { padding: '15px 12px', fontSize: '14px', color: '#334155' },
-  patenteBadge: { background: '#0f172a', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', display: 'inline-block', letterSpacing: '1px' },
-  btnDel: { background: '#fff1f2', border: 'none', color: '#e11d48', cursor: 'pointer', padding: '10px', borderRadius: '8px' },
-  empty: { textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }
+  patenteBadge: { background: '#0f172a', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', fontWeight: '700' },
+  btnDel: { background: '#fff1f2', border: 'none', color: '#e11d48', cursor: 'pointer', padding: '8px', borderRadius: '6px' },
+  empty: { textAlign: 'center', padding: '40px', color: '#94a3b8' }
 };
 
 export default Vehiculos;

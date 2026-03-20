@@ -23,8 +23,8 @@ const OrdenesTrabajo = () => {
   const fetchDatos = async () => {
     try {
       const [resOt, resVeh] = await Promise.all([
-        api.get('/api/ordenes-trabajo'),
-        api.get('/api/vehiculos')
+        api.get('/ordenes-trabajo'),
+        api.get('/vehiculos')
       ]);
       setOrdenes(resOt.data?.sort((a, b) => b.id - a.id) || []);
       setVehiculos(resVeh.data || []);
@@ -48,27 +48,24 @@ const OrdenesTrabajo = () => {
     };
 
     try {
-      await api.post('/api/ordenes-trabajo', payload);
+      await api.post('/ordenes-trabajo', payload);
       alert("✅ Orden de Trabajo registrada con éxito");
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Error al guardar la OT");
+      alert(err.message || "Error al guardar la OT");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- DISEÑO DE PDF OPTIMIZADO PARA IMPRESIÓN (COLORES CLAROS) ---
   const descargarOT = (ot) => {
     const doc = new jsPDF();
-    const lightBlue = [224, 242, 254]; // Azul Cielo Claro (Sky-100)
-    const textColor = [0, 0, 0];      // Negro puro
+    const lightBlue = [224, 242, 254]; 
+    const textColor = [0, 0, 0];      
     const margin = 14;
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // 1. Encabezado Claro
     doc.setFillColor(...lightBlue);
     doc.rect(0, 0, pageWidth, 45, 'F'); 
 
@@ -89,7 +86,6 @@ const OrdenesTrabajo = () => {
     doc.setFontSize(14);
     doc.text(`# OT-${String(ot.id).padStart(5, '0')}`, pageWidth - margin, 35, { align: 'right' });
 
-    // 2. Información de Recepción
     let currentY = 55;
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -100,7 +96,6 @@ const OrdenesTrabajo = () => {
     doc.text(`Fecha Emisión: ${new Date(ot.createdAt || Date.now()).toLocaleDateString('es-AR')}`, margin, currentY + 7);
     doc.text(`Estado: ACTIVA / PENDIENTE`, pageWidth - margin, currentY + 7, { align: 'right' });
 
-    // 3. Tabla Principal
     autoTable(doc, {
       startY: currentY + 12,
       head: [['ESPECIFICACIÓN', 'DETALLE']],
@@ -109,7 +104,7 @@ const OrdenesTrabajo = () => {
         ['VEHÍCULO', (ot.vehiculo?.modelo || 'N/A').toUpperCase()],
         ['KILOMETRAJE', `${Number(ot.kilometraje).toLocaleString()} KM`],
         ['CHOFER / RESPONSABLE', ot.responsable.toUpperCase()],
-        ['REQUERIMIENTO PRINCIPAL', (ot.descripcion_falla || ot.falla || '').toUpperCase()],
+        ['REQUERIMIENTO PRINCIPAL', (ot.falla || '').toUpperCase()],
       ],
       theme: 'grid',
       headStyles: { 
@@ -125,7 +120,6 @@ const OrdenesTrabajo = () => {
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // 4. Sección de Taller (Líneas para completar a mano)
     doc.setFillColor(248, 250, 252);
     doc.rect(margin, currentY, pageWidth - (margin * 2), 10, 'F');
     doc.setFont("helvetica", "bold");
@@ -139,7 +133,6 @@ const OrdenesTrabajo = () => {
       doc.line(margin, currentY + 28 + (i * 10), pageWidth - margin, currentY + 28 + (i * 10));
     }
 
-    // 5. Firmas (Líneas Negras)
     const footerY = 265;
     doc.setDrawColor(0);
     doc.setLineWidth(0.5);
@@ -242,7 +235,7 @@ const OrdenesTrabajo = () => {
                     <td style={styles.td}>{ot.vehiculo?.patente}</td>
                     <td style={styles.td}>{ot.responsable}</td>
                     <td style={{ ...styles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ot.descripcion_falla || ot.falla}
+                      {ot.falla}
                     </td>
                     <td style={styles.td}>
                       <button onClick={() => descargarOT(ot)} style={styles.btnPdf}>
@@ -261,7 +254,7 @@ const OrdenesTrabajo = () => {
 };
 
 const styles = {
-  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box' },
+  container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1100px', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' },
   headerArea: { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px' },
   iconCircle: { backgroundColor: '#0f172a', padding: '12px', borderRadius: '12px' },
@@ -273,13 +266,13 @@ const styles = {
   label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '5px' },
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
   textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', minHeight: '100px', fontSize: '14px', resize: 'vertical' },
-  btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none', transition: 'all 0.2s' },
+  btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none' },
   tableSection: { marginTop: '40px' },
   tableTitle: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#1e293b' },
   tableWrapper: { overflowX: 'auto', borderRadius: '12px', border: '1px solid #e2e8f0' },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { padding: '15px', textAlign: 'left', backgroundColor: '#f1f5f9', fontSize: '12px', color: '#475569', textTransform: 'uppercase' },
-  tdRow: { borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' },
+  tdRow: { borderBottom: '1px solid #f1f5f9' },
   td: { padding: '15px', fontSize: '14px', color: '#1e293b' },
   btnPdf: { display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '12px', fontWeight: '600', color: '#0f172a' }
 };

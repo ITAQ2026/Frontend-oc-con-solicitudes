@@ -20,22 +20,27 @@ const Navbar = ({ user, onLogout }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // --- LÓGICA DE PERMISOS (Sincronizada con App.js) ---
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
+  
   const isAdmin = userRole === 'admin';
-  const isLogistics = isAdmin || userEmail.includes('m.moreno');
+  const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
+                   userEmail === 'm.moreno@alphaquica.com.ar';
+
+  // Logística es para Moreno o Administradores
+  const isLogistics = isAdmin || isMoreno;
 
   const handleLogoutClick = () => {
-    onLogout();
+    onLogout(); // Esto limpia el localStorage en App.js
     navigate('/login');
   };
 
   const closeMenu = () => setIsMenuOpen(false);
 
-  // --- LÓGICA DE ESTILOS DINÁMICOS ---
+  // --- ESTILOS DINÁMICOS PARA MOBILE ---
   const menuStyles = isMobile 
     ? {
-        // Estilos para Celular
         position: 'absolute',
         top: '65px',
         left: 0,
@@ -52,7 +57,6 @@ const Navbar = ({ user, onLogout }) => {
         zIndex: 999
       }
     : {
-        // Estilos para PC
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
@@ -80,10 +84,12 @@ const Navbar = ({ user, onLogout }) => {
 
       <div style={menuStyles}>
         <div style={isMobile ? styles.mobileStack : styles.desktopStack}>
+          {/* ACCESO UNIVERSAL */}
           <Link to="/solicitudes" style={styles.link} onClick={closeMenu}>
             <FileText size={18} /> Solicitudes
           </Link>
 
+          {/* ACCESO LOGÍSTICA */}
           {isLogistics && (
             <>
               {!isMobile && <div style={styles.divider} />}
@@ -96,6 +102,7 @@ const Navbar = ({ user, onLogout }) => {
             </>
           )}
 
+          {/* ACCESO ADMINISTRACIÓN */}
           {isAdmin && (
             <>
               {!isMobile && <div style={styles.divider} />}
@@ -118,15 +125,21 @@ const Navbar = ({ user, onLogout }) => {
           )}
         </div>
 
+        {/* SECCIÓN DE USUARIO */}
         <div style={{
           ...styles.userSection, 
           borderTop: isMobile ? '1px solid #334155' : 'none', 
           marginTop: isMobile ? '15px' : '0',
-          paddingTop: isMobile ? '15px' : '0'
+          paddingTop: isMobile ? '15px' : '0',
+          width: isMobile ? '100%' : 'auto',
+          justifyContent: isMobile ? 'space-between' : 'flex-end'
         }}>
-          <div style={styles.userInfo}>
+          <div style={isMobile ? {textAlign: 'left'} : styles.userInfo}>
             <span style={styles.userName}>{user?.nombre || 'Usuario'}</span>
-            <span style={{...styles.roleTag, background: isAdmin ? '#0ea5e9' : '#64748b'}}>
+            <span style={{
+              ...styles.roleTag, 
+              background: isAdmin ? '#0ea5e9' : (isMoreno ? '#10b981' : '#64748b')
+            }}>
               {userRole}
             </span>
           </div>
@@ -147,16 +160,17 @@ const styles = {
     top: 0, 
     zIndex: 1000,
     display: 'flex',
-    flexDirection: 'row', // En PC es horizontal
+    flexDirection: 'row',
     alignItems: 'center',
     height: '65px',
-    padding: '0 20px'
+    padding: '0 20px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
   },
   topBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginRight: '20px' // Espacio entre logo y links en PC
+    marginRight: '20px'
   },
   logo: { 
     display: 'flex', alignItems: 'center', gap: '10px', 
@@ -172,19 +186,21 @@ const styles = {
   link: { 
     color: '#cbd5e1', textDecoration: 'none', fontSize: '13px',
     display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '8px 12px', borderRadius: '8px', whiteSpace: 'nowrap'
+    padding: '8px 12px', borderRadius: '8px', whiteSpace: 'nowrap',
+    transition: 'all 0.2s ease'
   },
   divider: { width: '1px', height: '20px', background: '#334155', margin: '0 5px' },
   userSection: { 
     display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto'
   },
   userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
-  userName: { fontSize: '12px', fontWeight: 'bold' },
-  roleTag: { fontSize: '9px', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' },
+  userName: { fontSize: '12px', fontWeight: 'bold', color: '#f1f5f9' },
+  roleTag: { fontSize: '9px', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', fontWeight: 'bold' },
   logoutBtn: { 
     background: '#ef4444', color: 'white', border: 'none', 
     padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold'
+    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 'bold',
+    transition: 'background 0.2s'
   }
 };
 
