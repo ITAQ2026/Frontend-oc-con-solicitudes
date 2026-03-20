@@ -7,13 +7,19 @@ const UsuariosGestion = () => {
   const [nuevo, setNuevo] = useState({ nombre: '', email: '', password: '', rol: 'user' });
   const [cargando, setCargando] = useState(false);
 
+  /**
+   * Carga la lista de usuarios desde el Backend
+   */
   const cargarUsuarios = async () => {
     setCargando(true);
     try {
-      const res = await api.get('/usuarios');
+      // CORRECCIÓN: Agregamos /api antes de /usuarios
+      // Esto asume que tu backend tiene app.setGlobalPrefix('api');
+      const res = await api.get('/api/usuarios');
       setUsuarios(res.data || []);
     } catch (err) {
       console.error("Error al cargar usuarios:", err);
+      // Opcional: alert("❌ Error al conectar con el servidor para cargar usuarios.");
     } finally {
       setCargando(false);
     }
@@ -23,6 +29,9 @@ const UsuariosGestion = () => {
     cargarUsuarios(); 
   }, []);
 
+  /**
+   * Maneja el envío del formulario para crear un nuevo usuario
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (nuevo.password.length < 6) {
@@ -30,31 +39,42 @@ const UsuariosGestion = () => {
     }
 
     try {
+      // Mantenemos /api/usuarios/registro (que ya estaba bien)
       await api.post('/api/usuarios/registro', nuevo);
       alert("✅ Usuario creado y habilitado en el sistema");
-      setNuevo({ nombre: '', email: '', password: '', rol: 'user' });
-      cargarUsuarios();
+      setNuevo({ nombre: '', email: '', password: '', rol: 'user' }); // Limpiamos formulario
+      cargarUsuarios(); // Recargamos la lista
     } catch (err) {
+      // Capturamos el mensaje de error que viene del backend (ej: "Email ya registrado")
       const errorMsg = err.response?.data?.message || "Error al crear usuario";
       alert(`❌ ${errorMsg}`);
     }
   };
 
+  /**
+   * Elimina (Soft Delete) un usuario
+   * @param {number} id - ID numérico del usuario
+   * @param {string} nombre - Nombre para mostrar en la confirmación
+   */
   const eliminarUsuario = async (id, nombre) => {
-    if (id === 1 || nombre.toLowerCase() === 'admin') {
-      return alert("🛡️ Seguridad: El administrador del sistema no puede ser eliminado.");
+    // PROTECCIÓN: Como vimos en tu pgAdmin, el admin inicial tiene el ID 1.
+    // Esta línea asegura que el admin principal nunca sea eliminado por accidente.
+    if (id === 1) {
+      return alert("🛡️ Seguridad: El administrador del sistema principal no puede ser eliminado.");
     }
 
     if (window.confirm(`¿Está seguro de revocar el acceso a ${nombre}? Esta acción no se puede deshacer.`)) {
       try {
+        // CORRECCIÓN: Usamos la ruta completa /api/usuarios/id
         await api.delete(`/api/usuarios/${id}`);
-        cargarUsuarios();
+        cargarUsuarios(); // Recargamos para ver la lista actualizada
       } catch (err) {
-        alert("No se pudo eliminar el usuario.");
+        alert("No se pudo eliminar el usuario. Intente nuevamente.");
       }
     }
   };
 
+  // --- RENDERIZADO DEL COMPONENTE Y ESTILOS ---
   return (
     <div style={styles.container}>
       <div style={styles.pageHeader}>
@@ -147,6 +167,7 @@ const UsuariosGestion = () => {
                         onClick={() => eliminarUsuario(u.id, u.nombre)} 
                         style={styles.btnDelete}
                         title="Revocar acceso"
+                        disabled={u.id === 1} // Deshabilitamos botón para el admin principal
                       >
                         <Trash2 size={18} />
                       </button>
@@ -165,13 +186,13 @@ const UsuariosGestion = () => {
   );
 };
 
+// --- OBJETOS DE ESTILOS INLINE (Mantenemos tus estilos originales) ---
 const styles = {
   container: { maxWidth: '1100px', margin: '30px auto', padding: '0 20px', boxSizing: 'border-box' },
   pageHeader: { marginBottom: '30px', borderLeft: '4px solid #3b82f6', paddingLeft: '20px' },
   mainTitle: { margin: 0, fontSize: '24px', color: '#0f172a', fontWeight: '800' },
   mainSubtitle: { margin: '5px 0 0 0', color: '#64748b', fontSize: '14px' },
   
-  // Grid responsivo que evita el desbordamiento
   layoutGrid: { 
     display: 'grid', 
     gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', 
@@ -187,7 +208,7 @@ const styles = {
     border: '1px solid #f1f5f9',
     boxSizing: 'border-box',
     width: '100%',
-    overflow: 'hidden' // Evita que el contenido interno empuje la card
+    overflow: 'hidden' 
   },
   
   header: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b', marginBottom: '20px' },
