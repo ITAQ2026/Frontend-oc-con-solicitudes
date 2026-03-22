@@ -26,8 +26,8 @@ const SolicitudCompra = ({ user }) => {
   const cargarSolicitudes = async () => {
     if (!user?.id) return;
     try {
-      // Ajustado a ruta de NestJS
-      const res = await api.get(`/solicitudes?rol=${user.rol}&usuarioId=${user.id}`);
+      // CORRECCIÓN: Agregado el prefijo /api/
+      const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuarioId=${user.id}`);
       setSolicitudes(res.data || []);
     } catch (err) {
       console.error("Error cargando solicitudes:", err);
@@ -35,7 +35,10 @@ const SolicitudCompra = ({ user }) => {
   };
 
   useEffect(() => {
-    if (user) cargarSolicitudes();
+    if (user) {
+        setNuevaSolicitud(prev => ({ ...prev, solicitante: user.nombre }));
+        cargarSolicitudes();
+    }
   }, [user]);
 
   const solicitudesFiltradas = solicitudes.filter(s => 
@@ -68,13 +71,15 @@ const SolicitudCompra = ({ user }) => {
         estado: 'En Revisión',
         usuarioId: user.id 
       };
-      await api.post('/solicitudes', payload);
+      // CORRECCIÓN: Agregado el prefijo /api/
+      await api.post('/api/solicitudes', payload);
       alert("✅ Solicitud enviada correctamente");
       setItems([{ producto: '', cantidad: 1 }]);
       setNuevaSolicitud({ ...nuevaSolicitud, area: '', justificacion: '', link_referencia: '' });
       cargarSolicitudes();
     } catch (err) {
-      alert("❌ Error al procesar la solicitud");
+      const msg = err.response?.data?.message || "Error al procesar la solicitud";
+      alert(`❌ ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -82,14 +87,15 @@ const SolicitudCompra = ({ user }) => {
 
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
-      await api.patch(`/solicitudes/${id}/estado`, { estado: nuevoEstado });
+      // CORRECCIÓN: Agregado el prefijo /api/
+      await api.patch(`/api/solicitudes/${id}/estado`, { estado: nuevoEstado });
       cargarSolicitudes();
     } catch (err) {
       alert("Error al actualizar el estado");
     }
   };
 
-  if (!user) return <div style={styles.loadingContainer}><Clock className="animate-spin" /> Cargando...</div>;
+  if (!user) return <div style={styles.loadingContainer}><Clock className="animate-spin" /> Cargando sesión...</div>;
 
   return (
     <div style={styles.container}>
@@ -239,6 +245,7 @@ const SolicitudCompra = ({ user }) => {
   );
 };
 
+// ... (Mantenemos tus estilos exactamente iguales)
 const styles = {
   container: { padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' },
   header: { marginBottom: '20px', borderLeft: '5px solid #0f172a', paddingLeft: '15px' },
@@ -254,13 +261,10 @@ const styles = {
   btnDelete: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '8px', cursor: 'pointer' },
   btnAdd: { background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '10px', width: '100%', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' },
   btnSubmit: { width: '100%', background: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px', cursor: 'pointer' },
-  
-  // CORRECCIÓN DEL FILTRO AREA
   tableHeaderContainer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' },
   searchContainer: { position: 'relative', width: '100%', maxWidth: '300px' },
   searchIcon: { position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' },
   searchInput: { width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', border: '2px solid #e2e8f0', outline: 'none', fontSize: '14px', boxSizing: 'border-box' },
-  
   table: { width: '100%', borderCollapse: 'collapse' },
   th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', borderBottom: '2px solid #f1f5f9', textTransform: 'uppercase' },
   td: { padding: '12px', fontSize: '13px', borderBottom: '1px solid #f8fafc' },
