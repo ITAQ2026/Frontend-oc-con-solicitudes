@@ -22,7 +22,7 @@ const Recibos = () => {
   const fetchRecibos = async () => {
     try {
       // Ruta ajustada a NestJS
-      const res = await api.get('/recibos');
+      const res = await api.get('/api/recibos');
       setRecibos(res.data?.sort((a, b) => b.id - a.id) || []);
     } catch (err) { 
       console.error("Error al cargar recibos", err); 
