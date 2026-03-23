@@ -201,17 +201,15 @@ const OrdenesCompra = () => {
         }))
       };
 
+      // 1. Enviamos la orden. EL BACKEND YA MARCA LA SOLICITUD COMO COMPRADO.
       const res = await api.post('/api/ordenes-compra', payload);
 
-      // Actualizar estado de la solicitud a COMPRADO en el backend
-      if (form.solicitudId) {
-        await api.patch(`/api/solicitudes/${form.solicitudId}`, { estado: 'COMPRADO' });
-      }
-
-      alert("✅ Orden de compra generada y Solicitud marcada como COMPRADO.");
+      alert("✅ Orden de compra generada y Solicitud procesada.");
       
+      // 2. Generar PDF
       exportarPDF(items, { ...res.data, especificaciones: form.especificaciones, retira: form.retira }); 
       
+      // 3. Limpiar y recargar
       cargarDatos();
       setItems([{ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }]);
       setForm({ ...form, proveedorNombre: '', solicitudId: '', especificaciones: '', tiempoEstimado: '', retira: '' });
