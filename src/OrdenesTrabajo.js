@@ -38,6 +38,7 @@ const OrdenesTrabajo = () => {
     if (!form.vehiculoId) return alert("Seleccione un vehículo");
     setLoading(true);
 
+    // IMPORTANTE: Mapeamos 'descripcion_falla' del form a 'falla' para el Backend
     const payload = {
       falla: form.descripcion_falla.trim().toUpperCase(),
       tareas: "PENDIENTE DE REVISIÓN",
@@ -66,10 +67,11 @@ const OrdenesTrabajo = () => {
     const margin = 14;
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Encabezado
+    // Fondo del Encabezado
     doc.setFillColor(...lightBlue);
     doc.rect(0, 0, pageWidth, 45, 'F'); 
 
+    // Texto Encabezado Izquierda
     doc.setTextColor(...textColor);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
@@ -81,6 +83,7 @@ const OrdenesTrabajo = () => {
     doc.text("CUIT: 30-60968636-3", margin, 33);
     doc.text("Av Brigadier Gral San Martin 235 - Villa María, Cba.", margin, 38);
 
+    // Texto Encabezado Derecha
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("ORDEN DE TRABAJO", pageWidth - margin, 25, { align: 'right' });
@@ -97,7 +100,7 @@ const OrdenesTrabajo = () => {
     doc.text(`Fecha Emisión: ${new Date(ot.createdAt || Date.now()).toLocaleDateString('es-AR')}`, margin, currentY + 7);
     doc.text(`Estado: ACTIVA / PENDIENTE`, pageWidth - margin, currentY + 7, { align: 'right' });
 
-    // Tabla de datos
+    // TABLA PRINCIPAL DEL PDF
     autoTable(doc, {
       startY: currentY + 12,
       head: [['ESPECIFICACIÓN', 'DETALLE']],
@@ -105,8 +108,8 @@ const OrdenesTrabajo = () => {
         ['DOMINIO / PATENTE', (ot.vehiculo?.patente || 'N/A').toUpperCase()],
         ['VEHÍCULO', (ot.vehiculo?.modelo || 'N/A').toUpperCase()],
         ['KILOMETRAJE', `${Number(ot.kilometraje).toLocaleString()} KM`],
-        ['CHOFER / RESPONSABLE', ot.responsable.toUpperCase()],
-        ['DESCRIPCIÓN DE FALLA', (ot.falla || 'SIN ESPECIFICAR').toUpperCase()],
+        ['CHOFER / RESPONSABLE', (ot.responsable || 'N/A').toUpperCase()],
+        ['DESCRIPCIÓN DE FALLA', (ot.falla || 'MANTENIMIENTO GENERAL').toUpperCase()],
       ],
       theme: 'grid',
       headStyles: { fillColor: lightBlue, textColor: textColor, fontStyle: 'bold' },
@@ -116,7 +119,7 @@ const OrdenesTrabajo = () => {
 
     currentY = doc.lastAutoTable.finalY + 15;
 
-    // Sección para Taller
+    // Espacio para el Taller
     doc.setFillColor(248, 250, 252);
     doc.rect(margin, currentY, pageWidth - (margin * 2), 10, 'F');
     doc.setFont("helvetica", "bold");
@@ -130,8 +133,9 @@ const OrdenesTrabajo = () => {
       doc.line(margin, currentY + 28 + (i * 10), pageWidth - margin, currentY + 28 + (i * 10));
     }
 
-    // Firmas
+    // Firmas al pie
     const footerY = 265;
+    doc.setDrawColor(0);
     doc.line(margin + 10, footerY, margin + 70, footerY); 
     doc.line(pageWidth - margin - 70, footerY, pageWidth - margin - 10, footerY);
     
@@ -139,7 +143,7 @@ const OrdenesTrabajo = () => {
     doc.text("FIRMA Y ACLARACIÓN CHOFER", margin + 40, footerY + 5, { align: 'center' });
     doc.text("RESPONSABLE DE TALLER", pageWidth - margin - 40, footerY + 5, { align: 'center' });
 
-    doc.save(`OT_${ot.vehiculo?.patente || 'SP'}_${ot.id}.pdf`);
+    doc.save(`OT_${ot.vehiculo?.patente || 'S_P'}_${ot.id}.pdf`);
   };
 
   return (
@@ -194,10 +198,10 @@ const OrdenesTrabajo = () => {
           </div>
 
           <div style={styles.fullWidthGroup}>
-            <label style={styles.label}><FileText size={14}/> Descripción de la Falla</label>
+            <label style={styles.label}><FileText size={14}/> Descripción de la Falla / Pedido</label>
             <textarea 
               style={styles.textarea} 
-              placeholder="Describa el problema o el mantenimiento requerido..."
+              placeholder="Describa el problema detalladamente..."
               value={form.descripcion_falla} 
               onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
               required 
@@ -223,12 +227,12 @@ const OrdenesTrabajo = () => {
                 </tr>
               </thead>
               <tbody>
-                {ordenes.map(ot => (
+                {ordenes.length > 0 ? ordenes.map(ot => (
                   <tr key={ot.id} style={styles.tdRow}>
                     <td style={styles.td}><b>{String(ot.id).padStart(4, '0')}</b></td>
-                    <td style={styles.td}>{ot.vehiculo?.patente}</td>
+                    <td style={styles.td}>{ot.vehiculo?.patente || 'N/A'}</td>
                     <td style={styles.td}>{ot.responsable}</td>
-                    <td style={{ ...styles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ ...styles.td, maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {ot.falla}
                     </td>
                     <td style={styles.td}>
@@ -237,7 +241,9 @@ const OrdenesTrabajo = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan="5" style={{padding: '20px', textAlign: 'center', color: '#64748b'}}>No hay órdenes registradas.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -258,7 +264,7 @@ const styles = {
   inputGroup: { flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '8px' },
   fullWidthGroup: { flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' },
   label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '5px' },
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
   textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', minHeight: '80px', fontSize: '14px', resize: 'vertical' },
   btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none' },
   tableSection: { marginTop: '40px' },
