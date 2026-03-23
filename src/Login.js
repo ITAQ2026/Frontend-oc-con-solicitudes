@@ -15,7 +15,7 @@ const Login = ({ onLogin }) => {
 
     try {
       // Llamada al endpoint de NestJS
-      const res = await api.post('/usuarios/login', { 
+      const res = await api.post('/api/usuarios/login', { 
         email: normalizedEmail, 
         password 
       });
