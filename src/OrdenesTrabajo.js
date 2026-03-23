@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Wrench, Gauge, User, Loader2, ClipboardList, Download } from 'lucide-react';
+import { Wrench, Gauge, User, FileText, Loader2, ClipboardList, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -11,6 +11,7 @@ const OrdenesTrabajo = () => {
   
   const [form, setForm] = useState({ 
     vehiculoId: '', 
+    descripcion_falla: '', 
     kilometraje: '', 
     responsable: ''
   });
@@ -38,7 +39,7 @@ const OrdenesTrabajo = () => {
     setLoading(true);
 
     const payload = {
-      falla: "MANTENIMIENTO GENERAL", // Valor por defecto ya que quitamos el input
+      falla: form.descripcion_falla.trim().toUpperCase(),
       tareas: "PENDIENTE DE REVISIÓN",
       kilometraje: Number(form.kilometraje),
       responsable: form.responsable.trim().toUpperCase(),
@@ -49,7 +50,7 @@ const OrdenesTrabajo = () => {
     try {
       await api.post('/api/ordenes-trabajo', payload);
       alert("✅ Orden de Trabajo registrada con éxito");
-      setForm({ vehiculoId: '', kilometraje: '', responsable: '' });
+      setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) {
       alert(err.message || "Error al guardar la OT");
@@ -65,12 +66,13 @@ const OrdenesTrabajo = () => {
     const margin = 14;
     const pageWidth = doc.internal.pageSize.getWidth();
 
+    // Encabezado
     doc.setFillColor(...lightBlue);
     doc.rect(0, 0, pageWidth, 45, 'F'); 
 
     doc.setTextColor(...textColor);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
+    doc.setFontSize(20);
     doc.text("ALPHA QUÍMICA S.R.L.", margin, 20);
     
     doc.setFontSize(9);
@@ -95,6 +97,7 @@ const OrdenesTrabajo = () => {
     doc.text(`Fecha Emisión: ${new Date(ot.createdAt || Date.now()).toLocaleDateString('es-AR')}`, margin, currentY + 7);
     doc.text(`Estado: ACTIVA / PENDIENTE`, pageWidth - margin, currentY + 7, { align: 'right' });
 
+    // Tabla de datos
     autoTable(doc, {
       startY: currentY + 12,
       head: [['ESPECIFICACIÓN', 'DETALLE']],
@@ -103,22 +106,17 @@ const OrdenesTrabajo = () => {
         ['VEHÍCULO', (ot.vehiculo?.modelo || 'N/A').toUpperCase()],
         ['KILOMETRAJE', `${Number(ot.kilometraje).toLocaleString()} KM`],
         ['CHOFER / RESPONSABLE', ot.responsable.toUpperCase()],
-        // Se eliminó la fila de Requerimiento Principal aquí
+        ['DESCRIPCIÓN DE FALLA', (ot.falla || 'SIN ESPECIFICAR').toUpperCase()],
       ],
       theme: 'grid',
-      headStyles: { 
-        fillColor: lightBlue, 
-        textColor: textColor, 
-        fontStyle: 'bold',
-        lineWidth: 0.1,
-        lineColor: [200, 200, 200]
-      },
+      headStyles: { fillColor: lightBlue, textColor: textColor, fontStyle: 'bold' },
       styles: { cellPadding: 5, fontSize: 10, textColor: textColor },
       columnStyles: { 0: { cellWidth: 55, fontStyle: 'bold', fillColor: [250, 250, 250] } }
     });
 
     currentY = doc.lastAutoTable.finalY + 15;
 
+    // Sección para Taller
     doc.setFillColor(248, 250, 252);
     doc.rect(margin, currentY, pageWidth - (margin * 2), 10, 'F');
     doc.setFont("helvetica", "bold");
@@ -128,19 +126,16 @@ const OrdenesTrabajo = () => {
     doc.text("TAREAS REALIZADAS / DIAGNÓSTICO FINAL:", margin, currentY + 20);
     
     doc.setDrawColor(180, 180, 180);
-    for (let i = 0; i < 8; i++) { // Aumentamos líneas ya que hay más espacio
+    for (let i = 0; i < 6; i++) {
       doc.line(margin, currentY + 28 + (i * 10), pageWidth - margin, currentY + 28 + (i * 10));
     }
 
+    // Firmas
     const footerY = 265;
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
     doc.line(margin + 10, footerY, margin + 70, footerY); 
     doc.line(pageWidth - margin - 70, footerY, pageWidth - margin - 10, footerY);
     
     doc.setFontSize(8);
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "bold");
     doc.text("FIRMA Y ACLARACIÓN CHOFER", margin + 40, footerY + 5, { align: 'center' });
     doc.text("RESPONSABLE DE TALLER", pageWidth - margin - 40, footerY + 5, { align: 'center' });
 
@@ -198,6 +193,17 @@ const OrdenesTrabajo = () => {
             />
           </div>
 
+          <div style={styles.fullWidthGroup}>
+            <label style={styles.label}><FileText size={14}/> Descripción de la Falla</label>
+            <textarea 
+              style={styles.textarea} 
+              placeholder="Describa el problema o el mantenimiento requerido..."
+              value={form.descripcion_falla} 
+              onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
+              required 
+            />
+          </div>
+
           <button type="submit" style={styles.btnSubmit} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : "REGISTRAR APERTURA DE OT"}
           </button>
@@ -212,7 +218,7 @@ const OrdenesTrabajo = () => {
                   <th style={styles.th}>OT #</th>
                   <th style={styles.th}>Patente</th>
                   <th style={styles.th}>Responsable</th>
-                  <th style={styles.th}>Fecha</th>
+                  <th style={styles.th}>Falla</th>
                   <th style={styles.th}>Acciones</th>
                 </tr>
               </thead>
@@ -222,7 +228,9 @@ const OrdenesTrabajo = () => {
                     <td style={styles.td}><b>{String(ot.id).padStart(4, '0')}</b></td>
                     <td style={styles.td}>{ot.vehiculo?.patente}</td>
                     <td style={styles.td}>{ot.responsable}</td>
-                    <td style={styles.td}>{new Date(ot.createdAt).toLocaleDateString()}</td>
+                    <td style={{ ...styles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ot.falla}
+                    </td>
                     <td style={styles.td}>
                       <button onClick={() => descargarOT(ot)} style={styles.btnPdf}>
                         <Download size={14} /> PDF
@@ -239,7 +247,6 @@ const OrdenesTrabajo = () => {
   );
 };
 
-// Los estilos se mantienen igual (sin cambios necesarios)
 const styles = {
   container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1100px', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' },
@@ -249,8 +256,10 @@ const styles = {
   subtitle: { fontSize: '14px', color: '#64748b', margin: 0 },
   formGrid: { display: 'flex', flexWrap: 'wrap', gap: '20px', backgroundColor: '#e0f2fe', padding: '25px', borderRadius: '12px', border: '1px solid #bae6fd' },
   inputGroup: { flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '8px' },
+  fullWidthGroup: { flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' },
   label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '5px' },
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
+  input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', minHeight: '80px', fontSize: '14px', resize: 'vertical' },
   btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none' },
   tableSection: { marginTop: '40px' },
   tableTitle: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#1e293b' },
