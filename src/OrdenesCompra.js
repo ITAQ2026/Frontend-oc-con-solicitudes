@@ -13,7 +13,7 @@ const OrdenesCompra = () => {
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [items, setItems] = useState([{ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }]);
-
+  
   const [form, setForm] = useState({
     proveedorNombre: '',
     plazoPago: '',
@@ -54,6 +54,7 @@ const OrdenesCompra = () => {
     const sol = solicitudesAprobadas.find(s => String(s.id) === String(id));
     if (sol) {
       setForm({ ...form, solicitudId: id });
+      // NestJS/Postgres suelen devolver el JSON ya parseado como Array
       const itemsExtraidos = Array.isArray(sol.items) ? sol.items : JSON.parse(sol.items || '[]');
       setItems(itemsExtraidos.map(i => ({
         producto: i.producto || '',
@@ -65,64 +66,45 @@ const OrdenesCompra = () => {
     }
   };
 
-  const exportarPDF = (itemsFinales, datosOrden = null) => {
+  const exportarPDF = (itemsFinales, datosOrden) => {
     const doc = new jsPDF();
-    const info = datosOrden || form;
     const idRef = datosOrden?.id ? `OC-${String(datosOrden.id).padStart(4, '0')}` : 'BORRADOR';
-    
-    // CORRECCIÓN: Definición de colores
+    const margin = 10;
     const lightBlue ='#f0f9ff';
-    const textColor ='#1e293b';
+
     // Cabecera
     doc.setFillColor(...lightBlue);
     doc.rect(0, 0, 210, 45, 'F');
-    doc.setTextColor(...textColor);
     doc.setFontSize(20); doc.setFont("helvetica", "bold");
     doc.text("ALPHA QUÍMICA S.R.L.", 15, 20);
-    
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
     doc.text("CUIT: 30-60968636-3", 15, 28);
     doc.text("Av Brigadier Gral San Martin 235 - Villa María, Cba.", 15, 33);
     
-    doc.setFontSize(16); doc.setFont("helvetica", "bold");
-    doc.text("ORDEN DE COMPRA", 195, 25, { align: 'right' });
+    doc.setFontSize(16); doc.text("ORDEN DE COMPRA", 195, 25, { align: 'right' });
     doc.text(idRef, 195, 35, { align: 'right' });
 
-    // Información del proveedor
-    doc.setFontSize(10);
-    doc.text(`PROVEEDOR: ${(info.proveedorNombre || '').toUpperCase()}`, 15, 60);
-    doc.text(`FECHA: ${new Date(info.createdAt || new Date()).toLocaleDateString('es-AR')}`, 155, 60);
-    doc.text(`FORMA DE PAGO: ${info.formaPago} ${info.plazoPago}`, 15, 68);
-
     // Tabla de Items
-    const bodyData = Array.isArray(itemsFinales) ? itemsFinales : JSON.parse(itemsFinales || '[]');
-    
     autoTable(doc, {
-      startY: 80,
+      startY: 95,
       head: [['Descripción', 'Cant.', 'IVA', 'Unitario', 'Subtotal']],
-      body: bodyData.map(i => {
-        const precio = Number(i.precio) || 0;
-        const moneda = i.moneda === 'USD' ? 'U$D' : '$';
-        return [
-          i.producto.toUpperCase(), 
-          i.cantidad, 
-          i.iva || '21%', 
-          `${moneda} ${precio.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
-          `${moneda} ${(i.cantidad * precio).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
-        ];
-      }),
-      headStyles: { fillColor: lightBlue, textColor: textColor, halign: 'center' },
-      styles: { fontSize: 9 },
-      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+      body: itemsFinales.map(i => [
+        i.producto.toUpperCase(), 
+        i.cantidad, 
+        i.iva, 
+        `${i.moneda === 'USD' ? 'U$D' : '$'} ${Number(i.precio).toLocaleString('es-AR')}`,
+        `${i.moneda === 'USD' ? 'U$D' : '$'} ${(i.cantidad * i.precio).toLocaleString('es-AR')}`
+      ]),
+      headStyles: { fillColor: lightBlue, textColor: '#1e293b' }
     });
 
-    doc.save(`OC_ALPHA_${idRef}.pdf`);
+    doc.save(`${idRef}.pdf`);
   };
 
   const enviar = async (e) => {
     e.preventDefault();
-    if (!form.proveedorNombre) return alert("Seleccione un proveedor");
     try {
+      // CORRECCIÓN: Procesamos items como números y enviamos el Array directamente
       const payload = {
         ...form,
         solicitudId: form.solicitudId ? Number(form.solicitudId) : null,
@@ -137,10 +119,7 @@ const OrdenesCompra = () => {
       alert("✅ Orden generada con éxito");
       exportarPDF(res.data.items, res.data);
       cargarDatos();
-      
-      // Limpiar formulario
       setItems([{ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }]);
-      setForm({ ...form, proveedorNombre: '', solicitudId: '', especificaciones: '', tiempoEstimado: '', retira: '' });
     } catch (err) {
       alert("Error: " + (err.response?.data?.message || "Error de conexión"));
     }
@@ -167,12 +146,6 @@ const OrdenesCompra = () => {
                   {proveedores.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
                 </select>
                 <input style={styles.input} placeholder="Plazo de Pago" value={form.plazoPago} onChange={e => setForm({...form, plazoPago: e.target.value})} />
-                <select style={styles.input} value={form.formaPago} onChange={e => setForm({...form, formaPago: e.target.value})}>
-                    <option value="TRANSFERENCIA">Transferencia</option>
-                    <option value="ECHEQ">Echeq / Cheque</option>
-                    <option value="EFECTIVO">Efectivo</option>
-                    <option value="CUENTA CORRIENTE">Cuenta Corriente</option>
-                </select>
              </div>
           </div>
 
@@ -183,10 +156,6 @@ const OrdenesCompra = () => {
                 <input style={{...styles.input, flex: 3}} placeholder="Producto" required value={item.producto} onChange={e => { const n = [...items]; n[index].producto = e.target.value; setItems(n); }} />
                 <input style={{...styles.input, flex: 0.5}} type="number" placeholder="Cant" required value={item.cantidad} onChange={e => { const n = [...items]; n[index].cantidad = e.target.value; setItems(n); }} />
                 <input style={{...styles.input, flex: 1}} type="number" step="0.01" placeholder="Precio" value={item.precio} onChange={e => { const n = [...items]; n[index].precio = e.target.value; setItems(n); }} />
-                <select style={{...styles.input, flex: 0.8}} value={item.moneda} onChange={e => { const n = [...items]; n[index].moneda = e.target.value; setItems(n); }}>
-                  <option value="PESOS">($)</option>
-                  <option value="USD">(U$D)</option>
-                </select>
                 <button type="button" onClick={() => setItems(items.filter((_, i) => i !== index))} style={styles.btnDeleteRow}><Trash2 size={16}/></button>
               </div>
             ))}
@@ -196,32 +165,6 @@ const OrdenesCompra = () => {
           <button type="submit" style={styles.btnSubmit}><Save size={20}/> GUARDAR Y GENERAR PDF</button>
         </form>
       </div>
-
-      <div style={{...styles.card, marginTop: '25px'}}>
-        <h2 style={styles.header}><History size={24} /> Historial de Órdenes</h2>
-        <table style={{width: '100%', borderCollapse: 'collapse'}}>
-          <thead>
-            <tr style={{textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '13px'}}>
-              <th style={{padding: '10px'}}>Orden</th>
-              <th style={{padding: '10px'}}>Fecha</th>
-              <th style={{padding: '10px'}}>Proveedor</th>
-              <th style={{padding: '10px', textAlign: 'right'}}>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {historial.map(oc => (
-              <tr key={oc.id} style={{borderBottom: '1px solid #f8fafc'}}>
-                <td style={{padding: '10px', fontWeight: 'bold'}}>OC-{String(oc.id).padStart(4, '0')}</td>
-                <td style={{padding: '10px'}}>{new Date(oc.createdAt).toLocaleDateString()}</td>
-                <td style={{padding: '10px'}}>{oc.proveedorNombre}</td>
-                <td style={{padding: '10px', textAlign: 'right'}}>
-                  <button onClick={() => exportarPDF(oc.items, oc)} style={styles.btnPdfIcon}><Download size={16}/></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };
@@ -229,19 +172,17 @@ const OrdenesCompra = () => {
 const styles = {
   container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1100px', margin: '0 auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' },
-  header: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px', fontWeight: 'bold' },
+  header: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px' },
   sectionVinculo: { marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '12px' },
   inputVinculo: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #bae6fd' },
   sectionItems: { padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '15px' },
-  gridRow: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
-  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', flex: 1, minWidth: '150px' },
-  itemRow: { display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' },
-  btnDeleteRow: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer' },
-  btnAdd: { width: '100%', padding: '10px', border: '1px dashed #94a3b8', background: 'none', cursor: 'pointer', borderRadius: '8px', color: '#64748b' },
-  btnSubmit: { width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '16px' },
-  btnPdfIcon: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px', cursor: 'pointer' },
-  label: { fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', display: 'block', color: '#475569' },
-  labelVinculo: { fontSize: '12px', fontWeight: 'bold', color: '#0369a1', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }
+  gridRow: { display: 'flex', gap: '10px' },
+  input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' },
+  itemRow: { display: 'flex', gap: '8px', marginBottom: '10px' },
+  btnDeleteRow: { background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', padding: '10px' },
+  btnAdd: { width: '100%', padding: '10px', border: '1px dashed #94a3b8', background: 'none', cursor: 'pointer' },
+  btnSubmit: { width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px' },
+  label: { fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', display: 'block' }
 };
 
 export default OrdenesCompra;
