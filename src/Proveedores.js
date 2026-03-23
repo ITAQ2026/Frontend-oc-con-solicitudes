@@ -24,7 +24,7 @@ const GestionProveedores = () => {
     setCargando(true);
     try {
       // Usamos la ruta directa, el interceptor maneja el resto
-      const res = await api.get('/proveedores');
+      const res = await api.get('/api/proveedores');
       setProveedores(res.data || []);
     } catch (err) {
       console.error("Error al cargar proveedores:", err);
@@ -58,7 +58,7 @@ const GestionProveedores = () => {
 
     try {
       // El interceptor inyecta el adminId automáticamente desde el localStorage
-      await api.post('/proveedores', nuevoProveedor);
+      await api.post('/api/proveedores', nuevoProveedor);
       
       setNuevoProveedor({
         nombre: '', cuit: '', direccion: '', localidad: '',
