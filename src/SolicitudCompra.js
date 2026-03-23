@@ -171,7 +171,7 @@ const SolicitudCompra = ({ user }) => {
         <div style={styles.tableHeaderContainer}>
           <div style={styles.sectionHeader}>
             <Clock size={20} />
-            <h3 style={styles.sectionTitle}>{user.rol === 'admin' ? "Panel de Autorizaciones" : "Mis Requerimientos"}</h3>
+            <h3 style={styles.sectionTitle}>{user.rol === 'admin' ? "Panel de Autorizaciones" : "Mis Solicitudes"}</h3>
           </div>
 
           {user.rol === 'admin' && (
