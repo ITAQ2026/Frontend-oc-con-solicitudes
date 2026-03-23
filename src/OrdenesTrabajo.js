@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
-import { Wrench, Gauge, User, FileText, Loader2, ClipboardList, Download } from 'lucide-react';
+import { Wrench, Gauge, User, Loader2, ClipboardList, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -11,7 +11,6 @@ const OrdenesTrabajo = () => {
   
   const [form, setForm] = useState({ 
     vehiculoId: '', 
-    descripcion_falla: '', 
     kilometraje: '', 
     responsable: ''
   });
@@ -39,7 +38,7 @@ const OrdenesTrabajo = () => {
     setLoading(true);
 
     const payload = {
-      falla: form.descripcion_falla.trim(),
+      falla: "MANTENIMIENTO GENERAL", // Valor por defecto ya que quitamos el input
       tareas: "PENDIENTE DE REVISIÓN",
       kilometraje: Number(form.kilometraje),
       responsable: form.responsable.trim().toUpperCase(),
@@ -50,7 +49,7 @@ const OrdenesTrabajo = () => {
     try {
       await api.post('/api/ordenes-trabajo', payload);
       alert("✅ Orden de Trabajo registrada con éxito");
-      setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
+      setForm({ vehiculoId: '', kilometraje: '', responsable: '' });
       fetchDatos();
     } catch (err) {
       alert(err.message || "Error al guardar la OT");
@@ -84,7 +83,7 @@ const OrdenesTrabajo = () => {
     doc.setFont("helvetica", "bold");
     doc.text("ORDEN DE TRABAJO", pageWidth - margin, 25, { align: 'right' });
     doc.setFontSize(14);
-    doc.text(`# OT-${String(ot.id).padStart(5, '0')}`, pageWidth - margin, 35, { align: 'right' });
+    doc.text(` OT-${String(ot.id).padStart(5, '0')}`, pageWidth - margin, 35, { align: 'right' });
 
     let currentY = 55;
     doc.setFontSize(11);
@@ -104,7 +103,7 @@ const OrdenesTrabajo = () => {
         ['VEHÍCULO', (ot.vehiculo?.modelo || 'N/A').toUpperCase()],
         ['KILOMETRAJE', `${Number(ot.kilometraje).toLocaleString()} KM`],
         ['CHOFER / RESPONSABLE', ot.responsable.toUpperCase()],
-        ['REQUERIMIENTO PRINCIPAL', (ot.falla || '').toUpperCase()],
+        // Se eliminó la fila de Requerimiento Principal aquí
       ],
       theme: 'grid',
       headStyles: { 
@@ -129,7 +128,7 @@ const OrdenesTrabajo = () => {
     doc.text("TAREAS REALIZADAS / DIAGNÓSTICO FINAL:", margin, currentY + 20);
     
     doc.setDrawColor(180, 180, 180);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) { // Aumentamos líneas ya que hay más espacio
       doc.line(margin, currentY + 28 + (i * 10), pageWidth - margin, currentY + 28 + (i * 10));
     }
 
@@ -199,17 +198,6 @@ const OrdenesTrabajo = () => {
             />
           </div>
 
-          <div style={styles.fullWidthGroup}>
-            <label style={styles.label}><FileText size={14}/> Descripción de la Falla o Pedido</label>
-            <textarea 
-              style={styles.textarea} 
-              placeholder="Describa el problema o el mantenimiento requerido..."
-              value={form.descripcion_falla} 
-              onChange={e => setForm({...form, descripcion_falla: e.target.value})} 
-              required 
-            />
-          </div>
-
           <button type="submit" style={styles.btnSubmit} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : "REGISTRAR APERTURA DE OT"}
           </button>
@@ -224,7 +212,7 @@ const OrdenesTrabajo = () => {
                   <th style={styles.th}>OT #</th>
                   <th style={styles.th}>Patente</th>
                   <th style={styles.th}>Responsable</th>
-                  <th style={styles.th}>Falla</th>
+                  <th style={styles.th}>Fecha</th>
                   <th style={styles.th}>Acciones</th>
                 </tr>
               </thead>
@@ -234,9 +222,7 @@ const OrdenesTrabajo = () => {
                     <td style={styles.td}><b>{String(ot.id).padStart(4, '0')}</b></td>
                     <td style={styles.td}>{ot.vehiculo?.patente}</td>
                     <td style={styles.td}>{ot.responsable}</td>
-                    <td style={{ ...styles.td, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ot.falla}
-                    </td>
+                    <td style={styles.td}>{new Date(ot.createdAt).toLocaleDateString()}</td>
                     <td style={styles.td}>
                       <button onClick={() => descargarOT(ot)} style={styles.btnPdf}>
                         <Download size={14} /> PDF
@@ -253,6 +239,7 @@ const OrdenesTrabajo = () => {
   );
 };
 
+// Los estilos se mantienen igual (sin cambios necesarios)
 const styles = {
   container: { padding: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' },
   card: { background: 'white', borderRadius: '16px', padding: '30px', maxWidth: '1100px', margin: '0 auto', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', boxSizing: 'border-box' },
@@ -262,10 +249,8 @@ const styles = {
   subtitle: { fontSize: '14px', color: '#64748b', margin: 0 },
   formGrid: { display: 'flex', flexWrap: 'wrap', gap: '20px', backgroundColor: '#e0f2fe', padding: '25px', borderRadius: '12px', border: '1px solid #bae6fd' },
   inputGroup: { flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '8px' },
-  fullWidthGroup: { flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '8px' },
   label: { fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '5px' },
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outlineColor: '#3b82f6' },
-  textarea: { padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', minHeight: '100px', fontSize: '14px', resize: 'vertical' },
   btnSubmit: { width: '100%', backgroundColor: '#0f172a', color: 'white', padding: '15px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', border: 'none' },
   tableSection: { marginTop: '40px' },
   tableTitle: { fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#1e293b' },
