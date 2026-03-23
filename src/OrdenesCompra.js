@@ -35,9 +35,9 @@ const OrdenesCompra = () => {
     try {
       // Rutas ajustadas a NestJS (sin /api si la base ya lo incluye)
       const [resProv, resSol, resHistorial] = await Promise.all([
-        api.get('/proveedores'),
-        api.get('/solicitudes?rol=admin'),
-        api.get('/ordenes-compra')
+        api.get('/api/proveedores'),
+        api.get('/api/solicitudes?rol=admin'),
+        api.get('/api/ordenes-compra')
       ]);
       setProveedores(resProv.data || []);
       const filtradas = (resSol.data || []).filter(s => s.estado === 'Aprobado');

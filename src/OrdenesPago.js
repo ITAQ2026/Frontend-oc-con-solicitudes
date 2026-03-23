@@ -28,8 +28,8 @@ const OrdenesPago = () => {
   const cargarDatos = async () => {
     try {
       const [resProv, resPagos] = await Promise.all([
-        api.get('/proveedores'),
-        api.get('/ordenes-pago')
+        api.get('/api/proveedores'),
+        api.get('/api/ordenes-pago')
       ]);
       setProveedores(resProv.data || []);
       setHistorial(resPagos.data?.sort((a, b) => b.id - a.id) || []);

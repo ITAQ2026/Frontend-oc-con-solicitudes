@@ -23,8 +23,8 @@ const OrdenesTrabajo = () => {
   const fetchDatos = async () => {
     try {
       const [resOt, resVeh] = await Promise.all([
-        api.get('/ordenes-trabajo'),
-        api.get('/vehiculos')
+        api.get('/api/ordenes-trabajo'),
+        api.get('/api/vehiculos')
       ]);
       setOrdenes(resOt.data?.sort((a, b) => b.id - a.id) || []);
       setVehiculos(resVeh.data || []);
@@ -48,7 +48,7 @@ const OrdenesTrabajo = () => {
     };
 
     try {
-      await api.post('/ordenes-trabajo', payload);
+      await api.post('/api/ordenes-trabajo', payload);
       alert("✅ Orden de Trabajo registrada con éxito");
       setForm({ vehiculoId: '', descripcion_falla: '', kilometraje: '', responsable: '' });
       fetchDatos();
