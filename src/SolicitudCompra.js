@@ -26,7 +26,7 @@ const SolicitudCompra = ({ user }) => {
   const cargarSolicitudes = async () => {
     if (!user?.id) return;
     try {
-      // CAMBIO: usuario_id (con guion bajo) para que coincida con tu @Query() en el Controller
+      // CORRECCIÓN: Se usa usuario_id para que coincida con query.usuario_id del Controller
       const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuario_id=${user.id}`);
       setSolicitudes(res.data || []);
     } catch (err) {
@@ -67,9 +67,9 @@ const SolicitudCompra = ({ user }) => {
     try {
       const payload = { 
         ...nuevaSolicitud, 
-        items: items, // El service ya hace el stringify según tu código de Nest
+        items: items, 
         estado: 'En Revisión',
-        usuario_id: user.id // CAMBIO: usuario_id para que coincida con tu @Body() datos.usuario_id
+        usuario_id: user.id // CORRECCIÓN: usuario_id para que el @Body() lo reciba bien
       };
       
       await api.post('/api/solicitudes', payload);
@@ -244,6 +244,7 @@ const SolicitudCompra = ({ user }) => {
   );
 };
 
+// ... (los estilos se mantienen iguales)
 const styles = {
   container: { padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' },
   header: { marginBottom: '20px', borderLeft: '5px solid #0f172a', paddingLeft: '15px' },
