@@ -26,8 +26,8 @@ const SolicitudCompra = ({ user }) => {
   const cargarSolicitudes = async () => {
     if (!user?.id) return;
     try {
-      // CORRECCIÓN: Agregado el prefijo /api/
-      const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuarioId=${user.id}`);
+      // CAMBIO: usuario_id (con guion bajo) para que coincida con tu @Query() en el Controller
+      const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuario_id=${user.id}`);
       setSolicitudes(res.data || []);
     } catch (err) {
       console.error("Error cargando solicitudes:", err);
@@ -67,11 +67,11 @@ const SolicitudCompra = ({ user }) => {
     try {
       const payload = { 
         ...nuevaSolicitud, 
-        items: JSON.stringify(items), 
+        items: items, // El service ya hace el stringify según tu código de Nest
         estado: 'En Revisión',
-        usuarioId: user.id 
+        usuario_id: user.id // CAMBIO: usuario_id para que coincida con tu @Body() datos.usuario_id
       };
-      // CORRECCIÓN: Agregado el prefijo /api/
+      
       await api.post('/api/solicitudes', payload);
       alert("✅ Solicitud enviada correctamente");
       setItems([{ producto: '', cantidad: 1 }]);
@@ -87,7 +87,6 @@ const SolicitudCompra = ({ user }) => {
 
   const cambiarEstado = async (id, nuevoEstado) => {
     try {
-      // CORRECCIÓN: Agregado el prefijo /api/
       await api.patch(`/api/solicitudes/${id}/estado`, { estado: nuevoEstado });
       cargarSolicitudes();
     } catch (err) {
@@ -245,11 +244,10 @@ const SolicitudCompra = ({ user }) => {
   );
 };
 
-// ... (Mantenemos tus estilos exactamente iguales)
 const styles = {
   container: { padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' },
   header: { marginBottom: '20px', borderLeft: '5px solid #0f172a', paddingLeft: '15px' },
-  title: { color: '#0f172a', margin: 0, fontWeight: '800' },
+  title: { color: '#0f172a', margin: 0, fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' },
   card: { background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: '8px' },
   sectionTitle: { fontSize: '14px', fontWeight: '700', margin: 0, textTransform: 'uppercase' },
@@ -266,8 +264,10 @@ const styles = {
   searchIcon: { position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' },
   searchInput: { width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', border: '2px solid #e2e8f0', outline: 'none', fontSize: '14px', boxSizing: 'border-box' },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', borderBottom: '2px solid #f1f5f9', textTransform: 'uppercase' },
-  td: { padding: '12px', fontSize: '13px', borderBottom: '1px solid #f8fafc' },
+  trHead: { background: '#f8fafc', borderBottom: '2px solid #f1f5f9' },
+  th: { textAlign: 'left', padding: '12px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' },
+  trBody: { borderBottom: '1px solid #f1f5f9' },
+  td: { padding: '12px', fontSize: '13px' },
   badgeEstado: (e) => ({ padding: '4px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: '700', background: e === 'Aprobado' ? '#dcfce7' : e === 'Rechazado' ? '#fee2e2' : '#fef3c7', color: e === 'Aprobado' ? '#166534' : e === 'Rechazado' ? '#991b1b' : '#92400e' }),
   urgenciaLabel: (u) => ({ fontSize: '11px', fontWeight: '700', color: u === 'ALTA' ? '#dc2626' : '#64748b' }),
   actions: { display: 'flex', gap: '12px', justifyContent: 'center' },
