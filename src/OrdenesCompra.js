@@ -191,7 +191,7 @@ const OrdenesCompra = () => {
     if (!form.proveedorNombre) return alert("Seleccione un proveedor");
     try {
       // Guardar en NestJS
-      const res = await api.post('/ordenes-compra', { ...form, items: JSON.stringify(items) });
+      const res = await api.post('/api/ordenes-compra', { ...form, items: JSON.stringify(items) });
       alert("✅ Orden de compra generada correctamente.");
       
       // Exportar PDF con los datos reales del servidor
