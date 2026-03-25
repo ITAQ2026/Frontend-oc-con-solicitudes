@@ -19,58 +19,42 @@ const Recibos = () => {
     fetchRecibos();
   }, []);
 
-  const fetchRecibos = async () => {
-    try {
-      // ✅ Aseguramos que use /api/recibos
-      const res = await api.get('/api/recibos');
-      setRecibos(res.data?.sort((a, b) => b.id - a.id) || []);
-    } catch (err) { 
-      console.error("Error al cargar recibos", err); 
-    }
-  };
+// ✅ PARA CARGAR RECIBOS
+const fetchRecibos = async () => {
+  try {
+    const res = await api.get('/api/recibos'); // Agregamos /api/ aquí
+    setRecibos(res.data || []);
+  } catch (err) {
+    console.error(err.message); 
+  }
+};
 
+// ✅ PARA ENVIAR EL FORMULARIO
 const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      
-      const payload = { 
-        numero_recibo: `REC-${Date.now()}`, 
-        monto: Number(form.monto),
-        fecha_emision: new Date().toISOString(), 
-        orden_id: 1, 
-        observaciones: `Emisor: ${form.emisor} - Receptor: ${form.receptor} - Concepto: ${form.concepto}`
-      };
-      
-    
-      
-      const res = await api.post('/recibos', payload); 
-      
-      alert("✅ Recibo generado y registrado");
-      
-      
-      descargarPDF({ ...res.data, ...form });
-
-      setForm({ 
-        emisor: 'Alpha Química S.A.', 
-        receptor: '', 
-        concepto: '', 
-        monto: '', 
-        condicion_pago: 'Transferencia' 
-      });
-      fetchRecibos();
-    } catch (err) { 
-      console.error("Error detallado del servidor:", err.response?.data);
-      // Esto te dirá exactamente qué campo del DTO está fallando
-      const mensajeError = Array.isArray(err.response?.data?.message) 
-        ? err.response.data.message.join(", ") 
-        : err.response?.data?.message;
-
-      alert("❌ Error de validación: " + (mensajeError || "Servidor no alcanzado")); 
-    } finally {
-      setLoading(false);
-    }
+  e.preventDefault();
+  setLoading(true);
+  
+  // IMPORTANTE: El payload debe cumplir con el DTO (numero_recibo, monto, etc.)
+  const payload = { 
+    numero_recibo: `REC-${Date.now()}`,
+    monto: Number(form.monto),
+    fecha_emision: new Date().toISOString(),
+    orden_id: 1, 
+    observaciones: `Emisor: ${form.emisor} | Receptor: ${form.receptor} | Concepto: ${form.concepto}`
   };
+
+  try {
+    const res = await api.post('/api/recibos', payload); // Agregamos /api/ aquí
+    alert("✅ Recibo registrado");
+    descargarPDF(res.data);
+    fetchRecibos();
+  } catch (err) {
+    // Gracias a tu interceptor en api.js, el mensaje real vendrá en err.message
+    alert("❌ Error: " + err.message); 
+  } finally {
+    setLoading(false);
+  }
+};
 
   const descargarPDF = (r) => {
     const doc = new jsPDF();
