@@ -29,34 +29,44 @@ const Recibos = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      
       const payload = { 
-        ...form, 
+        numero_recibo: `REC-${Date.now()}`, 
         monto: Number(form.monto),
-      // Si no tienes una orden vinculada, puedes enviar null o un ID por defecto
-        orden_id: null 
-    };
+        fecha_emision: new Date().toISOString(), 
+        orden_id: 1, 
+        observaciones: `Emisor: ${form.emisor} - Receptor: ${form.receptor} - Concepto: ${form.concepto}`
+      };
+      
     
-    // IMPORTANTE: Agregamos /api/ para que coincida con @Controller('api/recibos')
-      const res = await api.post('/api/recibos', payload); 
-    
+      
+      const res = await api.post('/recibos', payload); 
+      
       alert("✅ Recibo generado y registrado");
-      descargarPDF(res.data);
+      
+      
+      descargarPDF({ ...res.data, ...form });
 
       setForm({ 
         emisor: 'Alpha Química S.A.', 
         receptor: '', 
-        concept: '', // Asegúrate que coincida con tu DTO (concepto o concept)
+        concepto: '', 
         monto: '', 
         condicion_pago: 'Transferencia' 
       });
       fetchRecibos();
     } catch (err) { 
-      console.error("Error detallado:", err.response);
-      alert("❌ Error al procesar el recibo: " + (err.response?.data?.message || "Servidor no alcanzado")); 
+      console.error("Error detallado del servidor:", err.response?.data);
+      // Esto te dirá exactamente qué campo del DTO está fallando
+      const mensajeError = Array.isArray(err.response?.data?.message) 
+        ? err.response.data.message.join(", ") 
+        : err.response?.data?.message;
+
+      alert("❌ Error de validación: " + (mensajeError || "Servidor no alcanzado")); 
     } finally {
       setLoading(false);
     }
