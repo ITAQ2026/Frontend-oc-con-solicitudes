@@ -33,22 +33,32 @@ const fetchRecibos = async () => {
 const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
+
   try {
+    // 1. Construimos el objeto EXACTO que pide el DTO del Backend
     const payload = { 
+      // Generamos un número de recibo automático basado en la hora actual
+      numero_recibo: `REC-${Date.now().toString().slice(-6)}`, 
+      
       emisor: form.emisor, 
       receptor: form.receptor, 
       concepto: form.concepto, 
       monto: Number(form.monto),
       condicion_pago: form.condicion_pago,
-      orden_id: form.orden_id ? Number(form.orden_id) : undefined 
+      
+      // Opcional: Si no hay orden, mandamos null o un ID por defecto
+      orden_id: form.orden_id ? Number(form.orden_id) : null 
     };
 
-    // Usamos /api/recibos porque main.ts tiene el prefijo global 'api'
+    // 2. Realizamos la petición a /api/recibos
     const res = await api.post('/api/recibos', payload); 
     
-    alert("✅ Recibo registrado con éxito");
-    descargarPDF(res.data); // Usamos la respuesta oficial del servidor
+    alert("✅ Recibo generado y registrado con éxito");
+    
+    // 3. Generar PDF con la respuesta del servidor (que ya trae el ID)
+    descargarPDF(res.data);
 
+    // 4. Limpiar formulario
     setForm({ 
       emisor: 'Alpha Química S.A.', 
       receptor: '', 
@@ -56,9 +66,11 @@ const handleSubmit = async (e) => {
       monto: '', 
       condicion_pago: 'Transferencia' 
     });
+    
     fetchRecibos();
   } catch (err) { 
-    // Tu api.js ya gestiona el mensaje de error en err.message
+    // Tu interceptor en api.js ya nos da el mensaje limpio en err.message
+    console.error("Error capturado:", err.message);
     alert("❌ Error: " + err.message); 
   } finally {
     setLoading(false);
