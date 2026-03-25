@@ -33,23 +33,32 @@ const fetchRecibos = async () => {
 const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
-  
-  // IMPORTANTE: El payload debe cumplir con el DTO (numero_recibo, monto, etc.)
-  const payload = { 
-    numero_recibo: `REC-${Date.now()}`,
-    monto: Number(form.monto),
-    fecha_emision: new Date().toISOString(),
-    orden_id: 1, 
-    observaciones: `Emisor: ${form.emisor} | Receptor: ${form.receptor} | Concepto: ${form.concepto}`
-  };
-
   try {
-    const res = await api.post('/api/recibos', payload); // Agregamos /api/ aquí
-    alert("✅ Recibo registrado");
-    descargarPDF(res.data);
+    const payload = { 
+      emisor: form.emisor, 
+      receptor: form.receptor, 
+      concepto: form.concepto, 
+      monto: Number(form.monto),
+      condicion_pago: form.condicion_pago,
+      orden_id: form.orden_id ? Number(form.orden_id) : undefined 
+    };
+
+    // Usamos /api/recibos porque main.ts tiene el prefijo global 'api'
+    const res = await api.post('/api/recibos', payload); 
+    
+    alert("✅ Recibo registrado con éxito");
+    descargarPDF(res.data); // Usamos la respuesta oficial del servidor
+
+    setForm({ 
+      emisor: 'Alpha Química S.A.', 
+      receptor: '', 
+      concepto: '', 
+      monto: '', 
+      condicion_pago: 'Transferencia' 
+    });
     fetchRecibos();
-  } catch (err) {
-    // Gracias a tu interceptor en api.js, el mensaje real vendrá en err.message
+  } catch (err) { 
+    // Tu api.js ya gestiona el mensaje de error en err.message
     alert("❌ Error: " + err.message); 
   } finally {
     setLoading(false);
@@ -57,85 +66,70 @@ const handleSubmit = async (e) => {
 };
 
   const descargarPDF = (r) => {
-    const doc = new jsPDF();
-    
-    const lightBlue = [224, 242, 254]; 
-    const textColor = [0, 0, 0];      
-    const margin = 20;
+  if (!r) return;
+  const doc = new jsPDF();
+  
+  const lightBlue = [224, 242, 254]; 
+  const textColor = [0, 0, 0];      
+  const margin = 20;
 
-    // Encabezado
-    doc.setFillColor(...lightBlue);
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    doc.setTextColor(...textColor);
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("ALPHA QUÍMICA S.R.L.", 105, 20, { align: 'center' });
-    
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text("COMPROBANTE DE PAGO NO VÁLIDO COMO FACTURA", 105, 30, { align: 'center' });
+  // Encabezado
+  doc.setFillColor(...lightBlue);
+  doc.rect(0, 0, 210, 40, 'F');
+  doc.setTextColor(...textColor);
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("ALPHA QUÍMICA S.R.L.", 105, 20, { align: 'center' });
+  
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("COMPROBANTE DE PAGO NO VÁLIDO COMO FACTURA", 105, 30, { align: 'center' });
 
-    // Info Recibo
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`RECIBO DE CAJA R-${String(r.id).padStart(5, '0')}`, margin, 55);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    // Manejo de fecha compatible con NestJS (createdAt)
-    const fechaMostrar = new Date(r.createdAt || r.fecha || Date.now()).toLocaleDateString('es-AR');
-    doc.text(`Fecha: ${fechaMostrar}`, 190, 55, { align: 'right' });
+  // Info Recibo - Usamos el ID que viene del backend
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  const idFormateado = String(r.id || '0').padStart(5, '0');
+  doc.text(`RECIBO DE CAJA R-${idFormateado}`, margin, 55);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  const fechaMostrar = new Date(r.createdAt || Date.now()).toLocaleDateString('es-AR');
+  doc.text(`Fecha: ${fechaMostrar}`, 190, 55, { align: 'right' });
 
-    // Tabla de Contenido
-    autoTable(doc, {
-      startY: 65,
-      head: [['Concepto', 'Información']],
-      body: [
-        ['EMISOR / PAGADOR', r.emisor.toUpperCase()],
-        ['RECEPTOR / BENEFICIARIO', r.receptor.toUpperCase()],
-        ['MOTIVO DEL PAGO', (r.concepto || "").toUpperCase()],
-        ['MÉTODO UTILIZADO', r.condicion_pago.toUpperCase()],
-        ['MONTO TOTAL', `$ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
-      ],
-      theme: 'grid',
-      headStyles: { 
-        fillColor: lightBlue, 
-        textColor: textColor,
-        lineWidth: 0.1,
-        lineColor: [200, 200, 200]
-      },
-      styles: { fontSize: 10, cellPadding: 5, textColor: textColor }
-    });
+  // Tabla de Contenido
+  autoTable(doc, {
+    startY: 65,
+    head: [['Concepto', 'Información']],
+    body: [
+      ['EMISOR / PAGADOR', (r.emisor || "Alpha Química S.A.").toUpperCase()],
+      ['RECEPTOR / BENEFICIARIO', (r.receptor || "").toUpperCase()],
+      ['MOTIVO DEL PAGO', (r.concepto || "").toUpperCase()],
+      ['MÉTODO UTILIZADO', (r.condicion_pago || "Transferencia").toUpperCase()],
+      ['MONTO TOTAL', `$ ${Number(r.monto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: lightBlue, textColor: textColor },
+    styles: { fontSize: 10, cellPadding: 5 }
+  });
 
-    const finalY = doc.lastAutoTable.finalY + 15;
-    
-    // Cuadro de Total
-    doc.setFillColor(248, 250, 252);
-    doc.rect(margin, finalY, 170, 15, 'F');
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`TOTAL RECIBIDO: $ ${Number(r.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 105, finalY + 10, { align: 'center' });
+  const finalY = doc.lastAutoTable.finalY + 15;
+  
+  // Cuadro de Total
+  doc.setFillColor(248, 250, 252);
+  doc.rect(margin, finalY, 170, 15, 'F');
+  doc.setFont("helvetica", "bold");
+  doc.text(`TOTAL RECIBIDO: $ ${Number(r.monto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 105, finalY + 10, { align: 'center' });
 
-    // SECCIÓN DE FIRMAS
-    const firmaY = finalY + 45;
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
-    
-    doc.line(margin + 10, firmaY, margin + 70, firmaY); 
-    doc.line(130, firmaY, 190, firmaY); 
+  // Firmas
+  const firmaY = finalY + 45;
+  doc.line(margin + 10, firmaY, margin + 70, firmaY); 
+  doc.line(130, firmaY, 190, firmaY); 
+  doc.setFontSize(8);
+  doc.text("FIRMA EMISOR", margin + 40, firmaY + 5, { align: 'center' });
+  doc.text("FIRMA RECEPTOR", 160, firmaY + 5, { align: 'center' });
 
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text("FIRMA", margin + 40, firmaY + 5, { align: 'center' });
-    doc.text("FIRMA", 160, firmaY + 5, { align: 'center' });
-    
-    doc.setFont("helvetica", "bold");
-    doc.text(r.emisor.toUpperCase(), margin + 40, firmaY + 12, { align: 'center' });
-    doc.text(r.receptor.toUpperCase(), 160, firmaY + 12, { align: 'center' });
-
-    doc.save(`Recibo_Alpha_${r.id}.pdf`);
-  };
+  doc.save(`Recibo_Alpha_${r.id || 'nuevo'}.pdf`);
+};
 
   return (
     <div style={styles.container}>
