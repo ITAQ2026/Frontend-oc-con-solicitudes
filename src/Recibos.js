@@ -21,7 +21,7 @@ const Recibos = () => {
 
   const fetchRecibos = async () => {
     try {
-      // Ruta ajustada a NestJS
+      // ✅ Aseguramos que use /api/recibos
       const res = await api.get('/api/recibos');
       setRecibos(res.data?.sort((a, b) => b.id - a.id) || []);
     } catch (err) { 
@@ -33,23 +33,30 @@ const Recibos = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = { ...form, monto: Number(form.monto) };
-      const res = await api.post('/recibos', payload);
-      
+      const payload = { 
+        ...form, 
+        monto: Number(form.monto),
+      // Si no tienes una orden vinculada, puedes enviar null o un ID por defecto
+        orden_id: null 
+    };
+    
+    // IMPORTANTE: Agregamos /api/ para que coincida con @Controller('api/recibos')
+      const res = await api.post('/api/recibos', payload); 
+    
       alert("✅ Recibo generado y registrado");
-      // Generar PDF inmediatamente con los datos devueltos por el servidor (incluye el ID real)
       descargarPDF(res.data);
 
       setForm({ 
         emisor: 'Alpha Química S.A.', 
         receptor: '', 
-        concepto: '', 
+        concept: '', // Asegúrate que coincida con tu DTO (concepto o concept)
         monto: '', 
         condicion_pago: 'Transferencia' 
       });
       fetchRecibos();
     } catch (err) { 
-      alert("❌ Error al procesar el recibo"); 
+      console.error("Error detallado:", err.response);
+      alert("❌ Error al procesar el recibo: " + (err.response?.data?.message || "Servidor no alcanzado")); 
     } finally {
       setLoading(false);
     }
