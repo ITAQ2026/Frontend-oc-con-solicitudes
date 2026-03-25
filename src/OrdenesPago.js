@@ -28,8 +28,8 @@ const OrdenesPago = () => {
   const cargarDatos = async () => {
     try {
       const [resProv, resPagos] = await Promise.all([
-        api.get('/api/proveedores'),
-        api.get('/api/ordenes-pago')
+        api.get('/api/proveedores'),    // ✅ Correcto
+        api.get('/api/ordenes-pago')    // ✅ Asegúrate que tenga el /api/
       ]);
       setProveedores(resProv.data || []);
       setHistorial(resPagos.data?.sort((a, b) => b.id - a.id) || []);
@@ -133,24 +133,43 @@ const OrdenesPago = () => {
     setLoading(true);
 
     try {
-      const montoTotal = Number(pago.cantidad) * Number(pago.precioUnitario);
-      const res = await api.post('/ordenes-pago', { 
-        ...pago, 
-        monto: montoTotal,
+      const montoCalculado = Number(pago.cantidad) * Number(pago.precioUnitario);
+      
+      const payload = { 
+        // Generamos el número de orden que pide el DTO
+        numero_orden_pago: `OP-${Date.now().toString().slice(-6)}`,
+        
+        // Campos de información (Nombres exactos del DTO)
+        proveedorNombre: pago.proveedorNombre,
+        productoServicio: pago.productoServicio,
         cantidad: Number(pago.cantidad),
-        precioUnitario: Number(pago.precioUnitario)
-      });
+        precioUnitario: Number(pago.precioUnitario),
+        
+        // Campos financieros (Con guion bajo como el DTO)
+        monto_total: montoCalculado, 
+        metodo_pago: pago.metodoPago, 
+        caja: pago.caja,
+        notas: pago.referencia, // Mapeamos 'referencia' a 'notas'
+        
+        // Opcional
+        orden_compra_id: null 
+      };
+
+      // ✅ RUTA CON /api/
+      const res = await api.post('/api/ordenes-pago', payload);
       
       alert("✅ Orden de Pago registrada con éxito");
       generarPDF(res.data);
 
+      // Limpieza del form
       setPago({ 
         proveedorNombre: '', productoServicio: '', cantidad: 1, 
         precioUnitario: '', caja: '', metodoPago: 'Transferencia', referencia: '' 
       });
       cargarDatos();
     } catch (err) { 
-      alert(`❌ ${err.response?.data?.message || "Error al registrar el pago"}`); 
+      // api.js ya nos da el mensaje limpio
+      alert(`❌ Error: ${err.message}`); 
     } finally {
       setLoading(false);
     }
