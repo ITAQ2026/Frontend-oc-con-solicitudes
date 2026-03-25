@@ -26,20 +26,22 @@ const OrdenesPago = () => {
   }, []);
 
   const cargarDatos = async () => {
+  // Cargamos proveedores por separado para que no dependan del historial
     try {
-      const [resProv, resPagos] = await Promise.all([
-        api.get('/api/proveedores'),
-        api.get('/api/ordenes-pago')
-      ]);
-      
-      console.log("Proveedores recibidos:", resProv.data); // 👈 AGREGA ESTO
-      
+      const resProv = await api.get('/api/proveedores');
       setProveedores(resProv.data || []);
+  }   catch (err) {
+      console.error("Error cargando proveedores:", err);
+  }
+
+  // Cargamos historial por separado
+    try {
+      const resPagos = await api.get('/api/ordenes-pago');
       setHistorial(resPagos.data?.sort((a, b) => b.id - a.id) || []);
-    } catch (err) { 
-      console.error("Error cargando datos de pagos:", err); 
-    }
-  };
+  }   catch (err) {
+      console.error("Error cargando historial:", err);
+  }
+};
 
   const generarPDF = (p) => {
     const doc = new jsPDF();
