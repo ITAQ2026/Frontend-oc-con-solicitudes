@@ -284,7 +284,7 @@ const generarPDF = (p) => {
                   <tr key={p.id}>
                     <td style={styles.td}>#{String(p.id).padStart(4, '0')}</td>
                     <td style={styles.td}>{p.proveedorNombre}</td>
-                    <td style={styles.td}>$ {Number(p.monto).toLocaleString('es-AR')}</td>
+                    <td style={styles.td}> $ {Number(p.monto_total || p.monto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                     <td style={styles.td}>
                       <button onClick={() => generarPDF(p)} style={styles.btnPdf}>
                         <Download size={14} /> PDF
