@@ -43,10 +43,15 @@ const OrdenesPago = () => {
   }
 };
 
-  const generarPDF = (p) => {
+const generarPDF = (p) => {
+    // Si p es null o undefined por alguna razón, abortamos para no romper la app
+    if (!p) return;
+
     const doc = new jsPDF();
-    const idFormateado = String(p.id).padStart(4, '0');
-    const totalCalculado = p.monto || (Number(p.cantidad) * Number(p.precioUnitario));
+    const idFormateado = String(p.id || 0).padStart(4, '0');
+    
+    // Usamos monto_total (backend) o calculamos en el momento
+    const totalCalculado = p.monto_total || (Number(p.cantidad || 0) * Number(p.precioUnitario || 0));
     
     const lightBlue = [224, 242, 254]; 
     const textColor = [0, 0, 0]; 
@@ -56,7 +61,7 @@ const OrdenesPago = () => {
     doc.rect(0, 0, 210, 40, 'F');
     
     try { 
-      if (LOGO_ALPHA.length > 50) doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
+      if (LOGO_ALPHA && LOGO_ALPHA.length > 50) doc.addImage(LOGO_ALPHA, 'PNG', 15, 8, 50, 25); 
     } catch (e) { console.warn("Logo no disponible"); }
 
     doc.setTextColor(...textColor);
@@ -71,17 +76,23 @@ const OrdenesPago = () => {
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text(`NRO ORDEN: ${idFormateado}`, 15, 50);
-    doc.text(`FECHA: ${new Date(p.createdAt || Date.now()).toLocaleDateString('es-AR')}`, 15, 56);
-    doc.text(`CAJA/ORIGEN: ${(p.caja || "GENERAL").toUpperCase()}`, 15, 62);
+    // Verificamos fecha de creación (createdAt o fecha_creacion según tu Entity)
+    const fecha = p.createdAt || p.fecha_creacion || Date.now();
+    doc.text(`FECHA: ${new Date(fecha).toLocaleDateString('es-AR')}`, 15, 56);
+    
+    // ✅ PROTECCIÓN: .toUpperCase() con valor por defecto
+    const cajaTexto = (p.caja || "GENERAL").toUpperCase();
+    doc.text(`CAJA/ORIGEN: ${cajaTexto}`, 15, 62);
     
     // --- TABLA DE DETALLE ---
     autoTable(doc, {
       startY: 70,
       head: [["DESCRIPCIÓN", "PROVEEDOR", "CANT.", "P. UNIT", "TOTAL"]],
       body: [[
-        p.productoServicio.toUpperCase(),
-        p.proveedorNombre.toUpperCase(), 
-        p.cantidad, 
+        // ✅ PROTECCIÓN: .toUpperCase() con valor por defecto
+        (p.productoServicio || "SIN DETALLE").toUpperCase(),
+        (p.proveedorNombre || "SIN PROVEEDOR").toUpperCase(), 
+        p.cantidad || 1, 
         `$ ${Number(p.precioUnitario || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 
         `$ ${Number(totalCalculado).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
       ]],
@@ -102,10 +113,13 @@ const OrdenesPago = () => {
     });
 
     // --- INFORMACIÓN ADICIONAL ---
+    const metodo = (p.metodo_pago || p.metodoPago || "NO ESPECIFICADO").toUpperCase();
+    const ref = (p.notas || p.referencia || "SIN REFERENCIA").toUpperCase();
+
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 10,
-      head: [["MÉTODO DE PAGO", "REFERENCIA / NRO OPERACIÓN"]],
-      body: [[p.metodoPago.toUpperCase(), (p.referencia || "SIN REFERENCIA").toUpperCase()]],
+      head: [["MÉTODO DE PAGO", "REFERENCIA / NOTAS"]],
+      body: [[metodo, ref]],
       theme: 'striped',
       headStyles: { fillColor: [241, 245, 249], textColor: textColor }
     });
