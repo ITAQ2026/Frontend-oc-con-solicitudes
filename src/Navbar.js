@@ -25,8 +25,8 @@ const Navbar = ({ user, onLogout }) => {
   const userEmail = (user?.email || '').toLowerCase().trim();
   
   const isAdmin = userRole === 'admin';
-  const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
-                   userEmail === 'm.moreno@alphaquica.com.ar';
+  const isMoreno = userEmail === 'it@alphaquimicasrl.com.ar' || 
+                   userEmail === 'it@alphaquica.com.ar';
 
   // Logística es para Moreno o Administradores
   const isLogistics = isAdmin || isMoreno;
