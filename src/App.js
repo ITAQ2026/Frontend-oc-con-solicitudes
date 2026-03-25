@@ -55,8 +55,8 @@ function App() {
   const isAdmin = userRole === 'admin';
 
   // Lógica específica para Moreno (Logística)
-  const isMoreno = userEmail === 'm.moreno@alphaquimicasrl.com.ar' || 
-                   userEmail === 'm.moreno@alphaquimica.com.ar';
+  const isMoreno = userEmail === 'it@alphaquimicasrl.com.ar' || 
+                   userEmail === 'it@alphaquimica.com.ar';
 
   const isLogistics = isMoreno || isAdmin;
 
