@@ -28,9 +28,12 @@ const OrdenesPago = () => {
   const cargarDatos = async () => {
     try {
       const [resProv, resPagos] = await Promise.all([
-        api.get('/api/proveedores'),    // ✅ Correcto
-        api.get('/api/ordenes-pago')    // ✅ Asegúrate que tenga el /api/
+        api.get('/api/proveedores'),
+        api.get('/api/ordenes-pago')
       ]);
+      
+      console.log("Proveedores recibidos:", resProv.data); // 👈 AGREGA ESTO
+      
       setProveedores(resProv.data || []);
       setHistorial(resPagos.data?.sort((a, b) => b.id - a.id) || []);
     } catch (err) { 
