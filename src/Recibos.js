@@ -198,8 +198,7 @@ const handleSubmit = async (e) => {
                 {recibos.length > 0 ? recibos.map(r => (
                   <tr key={r.id} style={styles.tdRow}>
                     <td style={styles.td}>#{String(r.id).padStart(4, '0')}</td>
-                    <td style={styles.td}>{r.createdAt || r.created_at || r.fecha_creacion || r.fecha ? new Date(r.createdAt || r.created_at || r.fecha_creacion || r.fecha).toLocaleDateString('es-AR') : 'S/D'}</td>
-                    <td style={styles.td}>{r.receptor}</td>
+                    <td style={styles.td}>{r.fecha_emision ? new Date(r.fecha_emision).toLocaleDateString('es-AR') : 'S/D'}</td>                    <td style={styles.td}>{r.receptor}</td>
                     <td style={{...styles.td, fontWeight: 'bold', color: '#15803d'}}>$ {Number(r.monto).toLocaleString('es-AR')}</td>
                     <td style={{ ...styles.td, textAlign: 'center' }}>
                       <button onClick={() => descargarPDF(r)} style={styles.btnIcon}><Download size={16} /></button>
