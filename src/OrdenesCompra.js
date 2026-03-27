@@ -321,7 +321,7 @@ const OrdenesCompra = () => {
                 <td style={{padding: '12px', fontWeight: 'bold'}}>OC-{String(oc.id).padStart(4, '0')}</td>
                 <td style={{padding: '12px'}}>{oc.solicitudId ? <span style={{color: '#0369a1', fontWeight: '600'}}>SC-{oc.solicitudId}</span> : <span style={{color: '#94a3b8'}}>Directa</span>}</td>
                 <td style={{padding: '12px'}}>{new Date(oc.createdAt || oc.fecha).toLocaleDateString()}</td>
-                <td style={{padding: '12px'}}>{oc.proveedorNombre}</td>
+                <td style={{padding: '12px'}}>{oc.proveedorNombre || oc.proveedor}</td>
                 <td style={{padding: '12px', textAlign: 'right'}}>
                   <button onClick={() => exportarPDF(oc.items, oc)} style={styles.btnPdfIcon}><Download size={16}/></button>
                 </td>
