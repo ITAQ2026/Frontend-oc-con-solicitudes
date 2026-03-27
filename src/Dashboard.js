@@ -23,7 +23,7 @@ const Dashboard = () => {
       icon: <ClipboardList size={40} />, 
       path: '/solicitudes', 
       color: '#ef4444', 
-      desc: 'Gestionar solicitudes de insumos', 
+      desc: 'Gestión de solicitudes', 
       adminOnly: false 
     },
     { 
@@ -39,7 +39,7 @@ const Dashboard = () => {
       icon: <ShoppingCart size={40} />, 
       path: '/compras', 
       color: '#10b981', 
-      desc: 'Generar pedidos y PDFs', 
+      desc: 'Generar pedidos', 
       adminOnly: true 
     },
     { 
