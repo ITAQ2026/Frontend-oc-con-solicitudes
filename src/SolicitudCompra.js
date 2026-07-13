@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from './api'; 
 import { 
   Send, Clock, CheckCircle, XCircle, FileText, Plus, 
@@ -31,24 +31,24 @@ const SolicitudCompra = ({ user }) => {
     "Expedición", "Informática", "Brigada de emergencia", "Gestión interna"
   ];
 
-  const cargarSolicitudes = async () => {
+  const cargarSolicitudes = useCallback(async () => {
     if (!user?.id) return;
     try {
-      // Se filtran por rol y usuario_id desde el backend
-      const estadoParam = filtroEstado ? `&estado=${encodeURIComponent(filtroEstado)}` : '';
-      const res = await api.get(`/api/solicitudes?rol=${user.rol}&usuario_id=${user.id}${estadoParam}`);
+      // El backend filtra por el usuario/rol autenticado (token), no por parámetros del cliente
+      const estadoParam = filtroEstado ? `?estado=${encodeURIComponent(filtroEstado)}` : '';
+      const res = await api.get(`/api/solicitudes${estadoParam}`);
       setSolicitudes(res.data || []);
     } catch (err) {
       console.error("Error cargando solicitudes:", err);
     }
-  };
+  }, [user, filtroEstado]);
 
   useEffect(() => {
     if (user) {
         setNuevaSolicitud(prev => ({ ...prev, solicitante: user.nombre }));
         cargarSolicitudes();
     }
-  }, [user, filtroEstado]);
+  }, [user, filtroEstado, cargarSolicitudes]);
 
   const solicitudesFiltradas = solicitudes.filter(s => 
     s.area?.toLowerCase().includes(filtroArea.toLowerCase())
@@ -90,11 +90,10 @@ const SolicitudCompra = ({ user }) => {
     
     setLoading(true);
     try {
-      const payload = { 
-        ...nuevaSolicitud, 
-        items: items, 
+      const payload = {
+        ...nuevaSolicitud,
+        items: items,
         estado: 'En Revisión',
-        usuario_id: user.id 
       };
       
       await api.post('/api/solicitudes', payload);

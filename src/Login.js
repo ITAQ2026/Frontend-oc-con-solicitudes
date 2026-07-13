@@ -1,154 +1,155 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { SignInButton, SignUpButton, useAuth, useClerk, useUser } from '@clerk/clerk-react';
 import api from './api';
 
+const clerkKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+
 const Login = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  if (!clerkKey) {
+    return <MissingClerkConfig />;
+  }
+
+  return <ClerkLogin onLogin={onLogin} />;
+};
+
+const ClerkLogin = ({ onLogin }) => {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { getToken } = useAuth();
+  const { signOut } = useClerk();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Normalizamos el email antes de enviar
-    const normalizedEmail = email.toLowerCase().trim();
+  useEffect(() => {
+    const validarUsuario = async () => {
+      if (!isLoaded || !isSignedIn || !user) return;
 
-    try {
-      // Llamada al endpoint de NestJS
-      const res = await api.post('/api/usuarios/login', { 
-        email: normalizedEmail, 
-        password 
-      });
-      
-      if (res.data) {
-        // Preparamos el objeto de usuario con los datos del backend
-        const userToSave = {
-          ...res.data,
-          email: res.data.email || normalizedEmail
-        };
-        
-        // 1. Guardamos el token si el backend lo genera (JWT)
-        if (res.data.token) {
-          localStorage.setItem('token', res.data.token);
-        }
+      setLoading(true);
+      setError('');
+      try {
+        const clerkToken = await getToken();
+        const res = await api.post('/api/usuarios/clerk-login', { token: clerkToken });
+        const { token, user: usuarioBackend } = res.data;
 
-        // 2. Guardamos el objeto usuario para que el interceptor de api.js 
-        // pueda extraer el user.id para las auditorías (adminId)
-        localStorage.setItem('user', JSON.stringify(userToSave));
-        
-        // 3. Notificamos al componente App.js
-        onLogin(userToSave);
+        localStorage.setItem('user', JSON.stringify(usuarioBackend));
+        localStorage.setItem('token', token);
+        onLogin(usuarioBackend);
+      } catch (err) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setError(err.message || 'Este email no esta autorizado.');
+        await signOut();
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      // Usamos el mensaje procesado por nuestro interceptor en api.js
-      const errorMessage = err.message || "Error al iniciar sesión";
-      
-      if (err.response?.status === 401) {
-        alert("❌ Credenciales incorrectas");
-      } else {
-        alert(`⚠️ ${errorMessage}`);
-        console.error("Login error:", err);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    validarUsuario();
+  }, [isLoaded, isSignedIn, user, onLogin, signOut, getToken]);
 
   return (
     <div style={styles.container}>
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <div style={styles.form}>
         <div style={styles.logoContainer}>
-          <span style={{ fontSize: '40px' }}>🛡️</span>
-          <h2 style={styles.title}>Alpha Química</h2>
-          <p style={styles.subtitle}>Gestión de Compras e Inventario</p>
+          <span style={styles.logoIcon}>AQ</span>
+          <h2 style={styles.title}>Alpha Quimica</h2>
+          <p style={styles.subtitle}>Gestion de Compras e Inventario</p>
         </div>
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Correo Electrónico</label>
-          <input 
-            style={styles.input} 
-            type="email" 
-            placeholder="ejemplo@alphaquimica.com.ar" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            required 
-            disabled={loading}
-          />
-        </div>
+        {loading ? (
+          <div style={styles.statusBox}>Validando usuario autorizado...</div>
+        ) : (
+          <>
+            <SignInButton mode="modal">
+              <button style={styles.button}>Ingresar con Clerk</button>
+            </SignInButton>
 
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Contraseña</label>
-          <input 
-            style={styles.input} 
-            type="password" 
-            placeholder="••••••••" 
-            value={password} 
-            onChange={e => setPassword(e.target.value)} 
-            required 
-            disabled={loading}
-          />
-        </div>
+            <SignUpButton mode="modal">
+              <button style={styles.secondaryButton}>Crear acceso con email autorizado</button>
+            </SignUpButton>
+          </>
+        )}
 
-        <button 
-          type="submit" 
-          style={{
-            ...styles.button,
-            backgroundColor: loading ? '#94a3b8' : '#2563eb',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
-          disabled={loading}
-        >
-          {loading ? 'Validando...' : 'Iniciar Sesión'}
-        </button>
-        
-        <p style={styles.footerText}>Sistema de Uso Interno</p>
-      </form>
+        {error && <p style={styles.errorText}>{error}</p>}
+        <p style={styles.footerText}>Solo emails cargados en Usuarios pueden ingresar.</p>
+      </div>
     </div>
   );
 };
 
+const MissingClerkConfig = () => (
+  <div style={styles.container}>
+    <div style={styles.form}>
+      <h2 style={styles.title}>Falta configurar Clerk</h2>
+      <p style={styles.subtitle}>Agrega REACT_APP_CLERK_PUBLISHABLE_KEY en las variables del frontend.</p>
+    </div>
+  </div>
+);
+
 const styles = {
-  container: { 
-    display: 'flex', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    height: '100vh', 
-    background: '#0f172a' 
+  container: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    background: '#0f172a',
   },
-  form: { 
-    background: 'white', 
-    padding: '40px', 
-    borderRadius: '16px', 
-    boxShadow: '0 10px 25px rgba(0,0,0,0.2)', 
+  form: {
+    background: 'white',
+    padding: '40px',
+    borderRadius: '16px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
     width: '100%',
-    maxWidth: '400px' 
+    maxWidth: '420px',
   },
   logoContainer: { textAlign: 'center', marginBottom: '30px' },
-  title: { margin: '10px 0 5px 0', color: '#1e293b', fontSize: '24px', fontWeight: 'bold' },
-  subtitle: { color: '#64748b', fontSize: '14px', margin: 0 },
-  inputGroup: { marginBottom: '20px' },
-  label: { display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '5px', textTransform: 'uppercase' },
-  input: { 
-    width: '100%', 
-    padding: '12px', 
-    borderRadius: '8px', 
-    border: '1px solid #cbd5e1',
-    fontSize: '15px',
-    boxSizing: 'border-box',
-    outline: 'none'
+  logoIcon: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '10px',
+    background: '#0f172a',
+    color: 'white',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '800',
   },
-  button: { 
-    width: '100%', 
-    padding: '14px', 
-    color: 'white', 
-    border: 'none', 
-    borderRadius: '8px', 
+  title: { margin: '12px 0 5px 0', color: '#1e293b', fontSize: '24px', fontWeight: 'bold' },
+  subtitle: { color: '#64748b', fontSize: '14px', margin: 0, lineHeight: 1.5 },
+  button: {
+    width: '100%',
+    padding: '14px',
+    color: 'white',
+    background: '#2563eb',
+    border: 'none',
+    borderRadius: '8px',
     fontSize: '16px',
     fontWeight: 'bold',
-    transition: 'background 0.2s',
-    marginTop: '10px'
+    cursor: 'pointer',
+    marginTop: '10px',
   },
-  footerText: { textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#94a3b8' }
+  secondaryButton: {
+    width: '100%',
+    padding: '12px',
+    color: '#1e293b',
+    background: '#f8fafc',
+    border: '1px solid #cbd5e1',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    marginTop: '10px',
+  },
+  statusBox: {
+    background: '#eff6ff',
+    color: '#1d4ed8',
+    border: '1px solid #bfdbfe',
+    borderRadius: '8px',
+    padding: '14px',
+    textAlign: 'center',
+    fontWeight: '700',
+  },
+  errorText: { color: '#b91c1c', fontSize: '13px', marginTop: '14px', textAlign: 'center' },
+  footerText: { textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#94a3b8' },
 };
 
 export default Login;

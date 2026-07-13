@@ -3,6 +3,9 @@ import api from './api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Landmark, Download, Send, History, Loader2 } from 'lucide-react';
+import Paginacion from './Paginacion';
+
+const ITEMS_POR_PAGINA = 10;
 
 const OrdenesPago = () => {
   // Base64 del logo (puedes completarlo con el string largo original)
@@ -11,6 +14,7 @@ const OrdenesPago = () => {
   const [proveedores, setProveedores] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [paginaHistorial, setPaginaHistorial] = useState(1);
   const [pago, setPago] = useState({
     proveedorNombre: '',
     productoServicio: '', 
@@ -24,6 +28,15 @@ const OrdenesPago = () => {
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    setPaginaHistorial(1);
+  }, [historial.length]);
+
+  const historialPaginado = historial.slice(
+    (paginaHistorial - 1) * ITEMS_POR_PAGINA,
+    paginaHistorial * ITEMS_POR_PAGINA
+  );
 
   const cargarDatos = async () => {
   // Cargamos proveedores por separado para que no dependan del historial
@@ -280,7 +293,7 @@ const generarPDF = (p) => {
               {historial.length === 0 ? (
                 <tr><td colSpan="4" style={{textAlign:'center', padding:'20px', color: '#64748b'}}>Sin movimientos registrados</td></tr>
               ) : (
-                historial.slice(0, 10).map(p => (
+                historialPaginado.map(p => (
                   <tr key={p.id}>
                     <td style={styles.td}>#{String(p.id).padStart(4, '0')}</td>
                     <td style={styles.td}>{p.proveedorNombre}</td>
@@ -296,6 +309,12 @@ const generarPDF = (p) => {
             </tbody>
           </table>
         </div>
+        <Paginacion
+          paginaActual={paginaHistorial}
+          totalItems={historial.length}
+          itemsPorPagina={ITEMS_POR_PAGINA}
+          onPageChange={setPaginaHistorial}
+        />
       </div>
     </div>
   );

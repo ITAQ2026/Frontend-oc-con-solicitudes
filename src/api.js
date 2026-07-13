@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 1. Configuración de la URL base
-const baseURL = import.meta.env.VITE_API_URL || 'https://backend-sc-gbeq.onrender.com';
+const baseURL = process.env.REACT_APP_API_URL || 'https://backend-sc-gbeq.onrender.com';
 
 const api = axios.create({
   baseURL: baseURL,
@@ -14,27 +14,11 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    const userString = localStorage.getItem('user');
 
-    // Inyectar Token de Seguridad
+    // Inyectar Token de Seguridad. El backend identifica al usuario
+    // (id, rol) a partir de este token; ya no se envía adminId aparte.
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Inyectar adminId para trazabilidad (creado_por / actualizado_por)
-    if (userString) {
-      try {
-        const user = JSON.parse(userString);
-        if (user && user.id) {
-          // Importante: Esto inyecta ?adminId=X en TODAS las peticiones
-          config.params = {
-            ...config.params,
-            adminId: user.id,
-          };
-        }
-      } catch (e) {
-        console.error("Error al parsear el usuario del localStorage", e);
-      }
     }
 
     return config;
