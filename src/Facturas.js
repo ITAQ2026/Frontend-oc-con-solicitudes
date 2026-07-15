@@ -132,6 +132,17 @@ const Facturas = ({ user }) => {
     return `${simbolo} ${Number(factura.monto_total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
   };
 
+  const formatoFecha = (factura) => {
+    // La fecha viaja como calendario puro (sin hora); forzamos a leerla en UTC
+    // para que no se corra un dia por la zona horaria del navegador.
+    return new Date(factura.fecha).toLocaleDateString('es-AR', { timeZone: 'UTC' });
+  };
+
+  const numeroOrden = (factura) => {
+    if (!factura.orden_compra_id) return 'S/D';
+    return `OC-${String(factura.orden_compra_id).padStart(4, '0')}`;
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.card}>
@@ -216,19 +227,21 @@ const Facturas = ({ user }) => {
                 <th style={styles.th}>Proveedor</th>
                 <th style={styles.th}>Solicito</th>
                 <th style={styles.th}>Factura</th>
+                <th style={styles.th}>Orden de compra</th>
                 <th style={styles.th}>Total</th>
                 {canDelete && <th style={{ ...styles.th, textAlign: 'right' }}>Borrar</th>}
               </tr>
             </thead>
             <tbody>
               {facturas.length === 0 ? (
-                <tr><td colSpan={canDelete ? 6 : 5} style={styles.empty}>No hay facturas cargadas.</td></tr>
+                <tr><td colSpan={canDelete ? 7 : 6} style={styles.empty}>No hay facturas cargadas.</td></tr>
               ) : facturas.map((factura) => (
                 <tr key={factura.id}>
-                  <td style={styles.td}>{new Date(factura.fecha).toLocaleDateString('es-AR')}</td>
+                  <td style={styles.td}>{formatoFecha(factura)}</td>
                   <td style={styles.td}>{factura.proveedor}</td>
                   <td style={styles.td}>{factura.solicitado_por || 'S/D'}</td>
                   <td style={styles.td}>{factura.numero_factura}</td>
+                  <td style={styles.td}>{numeroOrden(factura)}</td>
                   <td style={styles.td}>{formatoMoneda(factura)}</td>
                   {canDelete && (
                     <td style={{ ...styles.td, textAlign: 'right' }}>
