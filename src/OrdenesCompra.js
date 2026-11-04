@@ -21,7 +21,7 @@ const OrdenesCompra = ({ user }) => {
     especificaciones: '',
     autoriza: 'LUCRECIA CAPÓ LLORENTE',
     retira: '',
-    solicitudId: ''
+    solicitudIds: []
   });
 
   const isAdminPrincipal = (user?.email || '').toLowerCase().trim() === 'admin@sistema.com';
@@ -49,29 +49,45 @@ const OrdenesCompra = ({ user }) => {
     }
   };
 
-  const manejarSeleccionSolicitud = (id) => {
-    if (!id) {
-      setForm({ ...form, solicitudId: '' });
-      setItems([{ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }]);
-      return;
+  const itemVacio = () => ({ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' });
+
+  const itemsDeSolicitud = (sol) => {
+    let itemsExtraidos = [];
+    try {
+      itemsExtraidos = typeof sol.items === 'string' ? JSON.parse(sol.items) : (sol.items || []);
+    } catch (e) {
+      itemsExtraidos = [{ producto: sol.justificacion || 'Producto sin nombre', cantidad: 1 }];
     }
-    const sol = solicitudesAprobadas.find(s => String(s.id) === String(id));
-    if (sol) {
-      setForm({ ...form, solicitudId: id });
-      let itemsExtraidos = [];
-      try {
-        itemsExtraidos = typeof sol.items === 'string' ? JSON.parse(sol.items) : (sol.items || []);
-      } catch (e) {
-        itemsExtraidos = [{ producto: sol.justificacion || 'Producto sin nombre', cantidad: 1 }];
-      }
-      setItems(itemsExtraidos.map(i => ({
-        producto: i.producto || '',
-        cantidad: Number(i.cantidad) || 1,
-        precio: '',
-        moneda: 'PESOS',
-        iva: '21%'
-      })));
+    return itemsExtraidos.map(i => ({
+      ...itemVacio(),
+      producto: i.producto || '',
+      cantidad: Number(i.cantidad) || 1,
+      solicitudOrigen: sol.id
+    }));
+  };
+
+  // Marca o desmarca una solicitud: agrega o quita solo sus ítems, sin tocar los demás
+  const toggleSolicitud = (sol) => {
+    const seleccionada = form.solicitudIds.includes(sol.id);
+    if (seleccionada) {
+      setForm({ ...form, solicitudIds: form.solicitudIds.filter(id => id !== sol.id) });
+      const restantes = items.filter(i => i.solicitudOrigen !== sol.id);
+      setItems(restantes.length ? restantes : [itemVacio()]);
+    } else {
+      setForm({ ...form, solicitudIds: [...form.solicitudIds, sol.id] });
+      const actuales = items.filter(i => i.producto.trim() !== '' || i.solicitudOrigen);
+      setItems([...actuales, ...itemsDeSolicitud(sol)]);
     }
+  };
+
+  // Referencias SC-x de una orden (historial) o del formulario
+  const refsSolicitudes = (info) => {
+    const ids = info.solicitudes?.length
+      ? info.solicitudes.map(s => s.id)
+      : info.solicitudIds?.length
+        ? info.solicitudIds
+        : info.solicitudId ? [info.solicitudId] : [];
+    return [...new Set(ids)].sort((a, b) => a - b).map(id => `SC-${id}`);
   };
 
   const eliminarFila = (index) => {
@@ -84,7 +100,7 @@ const OrdenesCompra = ({ user }) => {
     const doc = new jsPDF();
     const info = datosOrden || form;
     const idRef = datosOrden?.id ? `OC-${String(datosOrden.id).padStart(4, '0')}` : 'BORRADOR';
-    const scRef = info.solicitudId ? `SC-${info.solicitudId}` : 'DIRECTA';
+    const scRef = refsSolicitudes(info).join(', ') || 'DIRECTA';
     const margin = 10;
     const lightBlueColor = [224, 242, 254];
     const textColor = [0, 0, 0];
@@ -132,7 +148,7 @@ const OrdenesCompra = ({ user }) => {
     doc.setFont("helvetica", "bold");
     doc.text("REF. ORIGEN:", 135, currentY - 8);
     doc.setFont("helvetica", "normal");
-    doc.text(scRef, 165, currentY - 8);
+    doc.text(doc.splitTextToSize(scRef, 38), 165, currentY - 8);
 
     currentY += 10;
     if (info.tiempoEstimado) {
@@ -194,8 +210,7 @@ const OrdenesCompra = ({ user }) => {
     if (!form.proveedorNombre) return alert("Seleccione un proveedor");
     try {
       const payload = { 
-        ...form, 
-        solicitudId: form.solicitudId ? Number(form.solicitudId) : null,
+        ...form,
         creado_por_nombre: user?.nombre || '',
         creado_por_email: user?.email || '',
         items: items.map(it => ({
@@ -207,18 +222,21 @@ const OrdenesCompra = ({ user }) => {
         }))
       };
 
-      // 1. Enviamos la orden. EL BACKEND YA MARCA LA SOLICITUD COMO COMPRADO.
+      // 1. Enviamos la orden. EL BACKEND YA MARCA LAS SOLICITUDES COMO COMPRADO.
       const res = await api.post('/api/ordenes-compra', payload);
 
-      alert("✅ Orden de compra generada y Solicitud procesada.");
-      
+      const cant = form.solicitudIds.length;
+      alert(cant > 1
+        ? `✅ Orden de compra generada. ${cant} solicitudes procesadas.`
+        : "✅ Orden de compra generada y Solicitud procesada.");
+
       // 2. Generar PDF
-      exportarPDF(items, { ...res.data, especificaciones: form.especificaciones, retira: form.retira }); 
-      
+      exportarPDF(items, { ...res.data, solicitudIds: form.solicitudIds, especificaciones: form.especificaciones, retira: form.retira });
+
       // 3. Limpiar y recargar
       cargarDatos();
-      setItems([{ producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }]);
-      setForm({ ...form, proveedorNombre: '', solicitudId: '', especificaciones: '', tiempoEstimado: '', retira: '' });
+      setItems([itemVacio()]);
+      setForm({ ...form, proveedorNombre: '', solicitudIds: [], especificaciones: '', tiempoEstimado: '', retira: '' });
     } catch (err) { 
       console.error("Error detallado del servidor:", err.response?.data);
       alert("Error: " + (err.response?.data?.message || "No se pudo guardar la orden")); 
@@ -244,11 +262,17 @@ const OrdenesCompra = ({ user }) => {
     header: { display: 'flex', alignItems: 'center', gap: '12px', color: '#0f172a', marginBottom: '25px', fontSize: '22px', fontWeight: '800' },
     sectionVinculo: { marginBottom: '20px', padding: '15px', background: '#e0f2fe', borderRadius: '12px', border: '1px solid #bae6fd' },
     labelVinculo: { fontSize: '12px', fontWeight: '800', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' },
-    inputVinculo: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #7dd3fc', fontSize: '14px', outline: 'none' },
+    ayudaVinculo: { fontSize: '12px', color: '#0c4a6e', margin: '0 0 10px 0' },
+    listaSolicitudes: { maxHeight: '220px', overflowY: 'auto', background: 'white', borderRadius: '8px', border: '1px solid #7dd3fc' },
+    filaSolicitud: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontSize: '14px', cursor: 'pointer' },
+    filaSolicitudMarcada: { background: '#f0f9ff' },
+    sinSolicitudes: { padding: '12px', fontSize: '13px', color: '#94a3b8' },
+    resumenVinculo: { marginTop: '10px', fontSize: '12px', fontWeight: '700', color: '#0369a1' },
     sectionItems: { background: '#ffffff', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #e2e8f0' },
     gridRow: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
     input: { padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', flex: '1', fontSize: '14px', minWidth: '100px' },
     itemRow: { display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' },
+    origenItem: { fontSize: '11px', fontWeight: '700', color: '#0369a1', background: '#e0f2fe', borderRadius: '6px', padding: '4px 6px', whiteSpace: 'nowrap' },
     btnDeleteRow: { background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '8px', padding: '10px', cursor: 'pointer' },
     btnAdd: { padding: '10px', width: '100%', borderRadius: '8px', border: '1px dashed #94a3b8', cursor: 'pointer', color: '#64748b', background: 'none', fontWeight: '600' },
     btnSubmit: { width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '10px', fontSize: '16px' },
@@ -263,13 +287,31 @@ const OrdenesCompra = ({ user }) => {
         <h2 style={styles.header}><Package size={28} /> Generar Orden de Compra</h2>
         <form onSubmit={enviar}>
           <div style={styles.sectionVinculo}>
-            <label style={styles.labelVinculo}><ClipboardList size={14}/> 1. Vincular Solicitud de Compra (Aprobadas)</label>
-            <select style={styles.inputVinculo} value={form.solicitudId} onChange={e => manejarSeleccionSolicitud(e.target.value)}>
-              <option value="">-- Compra Directa (Sin solicitud previa) --</option>
-              {solicitudesAprobadas.map(s => (
-                <option key={s.id} value={s.id}>SC-{s.id} | {s.solicitante} | {s.area}</option>
-              ))}
-            </select>
+            <label style={styles.labelVinculo}><ClipboardList size={14}/> 1. Vincular Solicitudes de Compra (Aprobadas)</label>
+            <p style={styles.ayudaVinculo}>
+              Podés marcar varias solicitudes del mismo proveedor para generar una sola orden. Sin marcar ninguna, es compra directa.
+            </p>
+            <div style={styles.listaSolicitudes}>
+              {solicitudesAprobadas.length === 0 && (
+                <div style={styles.sinSolicitudes}>No hay solicitudes aprobadas pendientes.</div>
+              )}
+              {solicitudesAprobadas.map(s => {
+                const marcada = form.solicitudIds.includes(s.id);
+                return (
+                  <label key={s.id} style={{ ...styles.filaSolicitud, ...(marcada ? styles.filaSolicitudMarcada : {}) }}>
+                    <input type="checkbox" checked={marcada} onChange={() => toggleSolicitud(s)} />
+                    <strong>SC-{s.id}</strong>
+                    <span>{s.solicitante}</span>
+                    <span style={{ color: '#64748b' }}>{s.area}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div style={styles.resumenVinculo}>
+              {form.solicitudIds.length
+                ? `Seleccionadas: ${refsSolicitudes(form).join(', ')}`
+                : 'Compra directa (sin solicitud previa)'}
+            </div>
           </div>
 
           <div style={styles.sectionItems}>
@@ -314,10 +356,11 @@ const OrdenesCompra = ({ user }) => {
                   <option value="10.5%">IVA 10.5%</option>
                   <option value="0%">IVA 0%</option>
                 </select>
+                {item.solicitudOrigen && <span style={styles.origenItem}>SC-{item.solicitudOrigen}</span>}
                 <button type="button" onClick={() => eliminarFila(index)} style={styles.btnDeleteRow}><Trash2 size={16}/></button>
               </div>
             ))}
-            <button type="button" onClick={() => setItems([...items, { producto: '', cantidad: 1, precio: '', moneda: 'PESOS', iva: '21%' }])} style={styles.btnAdd}><Plus size={16}/> Agregar Ítem</button>
+            <button type="button" onClick={() => setItems([...items, itemVacio()])} style={styles.btnAdd}><Plus size={16}/> Agregar Ítem</button>
           </div>
           <button type="submit" style={styles.btnSubmit}><Save size={20}/> GUARDAR Y GENERAR ORDEN PDF</button>
         </form>
@@ -341,7 +384,7 @@ const OrdenesCompra = ({ user }) => {
             {historial.map((oc) => (
               <tr key={oc.id} style={{borderBottom: '1px solid #f1f5f9', fontSize: '14px'}}>
                 <td style={{padding: '12px', fontWeight: 'bold'}}>OC-{String(oc.id).padStart(4, '0')}</td>
-                <td style={{padding: '12px'}}>{oc.solicitudId ? <span style={{color: '#0369a1', fontWeight: '600'}}>SC-{oc.solicitudId}</span> : <span style={{color: '#94a3b8'}}>Directa</span>}</td>
+                <td style={{padding: '12px'}}>{refsSolicitudes(oc).length ? <span style={{color: '#0369a1', fontWeight: '600'}}>{refsSolicitudes(oc).join(', ')}</span> : <span style={{color: '#94a3b8'}}>Directa</span>}</td>
                 <td style={{padding: '12px'}}>{new Date(oc.createdAt || oc.fecha).toLocaleDateString()}</td>
                 <td style={{padding: '12px'}}>{oc.proveedorNombre || oc.proveedor}</td>
                 <td style={{padding: '12px'}}>{oc.creado_por_nombre || 'S/D'}</td>

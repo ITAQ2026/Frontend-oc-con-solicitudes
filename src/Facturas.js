@@ -56,6 +56,9 @@ const Facturas = ({ user }) => {
   };
 
   const obtenerSolicitante = (orden) => {
+    // Una orden puede agrupar varias solicitudes: se listan todos los solicitantes
+    const solicitantes = [...new Set((orden?.solicitudes || []).map((s) => s.solicitante).filter(Boolean))];
+    if (solicitantes.length) return solicitantes.join(', ');
     return orden?.solicitud?.solicitante || orden?.solicitante || orden?.autoriza || '';
   };
 
