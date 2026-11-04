@@ -15,10 +15,6 @@ import SolicitudCompra from './SolicitudCompra';
 import Recibos from './Recibos';
 import Facturas from './Facturas';
 
-// Componentes de Logística
-import Vehiculos from './Vehiculos';
-import OrdenesTrabajo from './OrdenesTrabajo';
-
 function App() {
   // Inicializamos el estado desde localStorage para persistir la sesión al recargar
   const [user, setUser] = useState(() => {
@@ -51,15 +47,7 @@ function App() {
 
   // Normalización de roles y permisos
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
-  const userEmail = (user?.email || '').toLowerCase().trim();
-  
   const isAdmin = userRole === 'admin';
-
-  // Lógica específica para Moreno (Logística)
-  const isMoreno = userEmail === 'it@alphaquimicasrl.com.ar' || 
-                   userEmail === 'it@alphaquimica.com.ar';
-
-  const isLogistics = isMoreno || isAdmin;
 
   return (
     <Router>
@@ -72,14 +60,6 @@ function App() {
             {/* --- RUTAS ACCESIBLES PARA TODOS --- */}
             <Route path="/" element={<Dashboard user={user} />} />
             <Route path="/solicitudes" element={<SolicitudCompra user={user} />} />
-
-            {/* --- RUTAS DE LOGÍSTICA: Moreno o Admin --- */}
-            {isLogistics && (
-              <>
-                <Route path="/vehiculos" element={<Vehiculos />} />
-                <Route path="/ordenes-trabajo" element={<OrdenesTrabajo />} />
-              </>
-            )}
 
             {/* --- RUTAS DE ADMINISTRACIÓN: Solo Admin --- */}
             {isAdmin && (

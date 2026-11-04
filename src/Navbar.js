@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  FileText, Truck, ShoppingCart, LogOut, Wrench, 
+  FileText, Truck, ShoppingCart, LogOut,
   Receipt, CreditCard, Users, Shield, Menu, X, ClipboardCheck
 } from 'lucide-react';
 
@@ -22,14 +22,7 @@ const Navbar = ({ user, onLogout }) => {
 
   // --- LÓGICA DE PERMISOS (Sincronizada con App.js) ---
   const userRole = (user?.rol || user?.role || '').toLowerCase().trim();
-  const userEmail = (user?.email || '').toLowerCase().trim();
-  
   const isAdmin = userRole === 'admin';
-  const isMoreno = userEmail === 'it@alphaquimicasrl.com.ar' || 
-                   userEmail === 'it@alphaquica.com.ar';
-
-  // Logística es para Moreno o Administradores
-  const isLogistics = isAdmin || isMoreno;
 
   const handleLogoutClick = () => {
     onLogout(); // Esto limpia el localStorage en App.js
@@ -89,19 +82,6 @@ const Navbar = ({ user, onLogout }) => {
             <FileText size={18} /> Solicitudes
           </Link>
 
-          {/* ACCESO LOGÍSTICA */}
-          {isLogistics && (
-            <>
-              {!isMobile && <div style={styles.divider} />}
-              <Link to="/vehiculos" style={styles.link} onClick={closeMenu}>
-                <Truck size={18} /> Vehículos
-              </Link>
-              <Link to="/ordenes-trabajo" style={styles.link} onClick={closeMenu}>
-                <Wrench size={18} /> O. Trabajo
-              </Link>
-            </>
-          )}
-
           {/* ACCESO ADMINISTRACIÓN */}
           {isAdmin && (
             <>
@@ -141,7 +121,7 @@ const Navbar = ({ user, onLogout }) => {
             <span style={styles.userName}>{user?.nombre || 'Usuario'}</span>
             <span style={{
               ...styles.roleTag, 
-              background: isAdmin ? '#0ea5e9' : (isMoreno ? '#10b981' : '#64748b')
+              background: isAdmin ? '#0ea5e9' : '#64748b'
             }}>
               {userRole}
             </span>
